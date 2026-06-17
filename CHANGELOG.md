@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.9] - 2026-06-17
+
+### Correzioni
+- Fix critico: webhook SNS (`/webhook/ses`) non raggiungibile quando APP_URL contiene `/public` — Laravel riceveva il path `/public/webhook/ses` invece di `/webhook/ses` e restituiva 404 silenzioso. Ora `public/index.php` normalizza il REQUEST_URI strippando il segmento `/public/` ridondante.
+
 ## [1.1.8] - 2026-06-17
 
 ### Correzioni

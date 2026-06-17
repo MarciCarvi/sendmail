@@ -1,12 +1,19 @@
 <?php
 
-// Shared hosting subfolder fix: when Apache rewrites /subfolder/path to /subfolder/public/index.php,
-// Symfony sees SCRIPT_NAME=/subfolder/public/index.php but REQUEST_URI=/subfolder/path
-// and cannot compute the correct base path. We strip /public from SCRIPT_NAME so Symfony
-// calculates the base as /subfolder instead of /subfolder/public.
+// Shared hosting subfolder fix: strip /public from SCRIPT_NAME so Symfony computes
+// the correct base path (/subfolder instead of /subfolder/public).
 if (isset($_SERVER['SCRIPT_NAME']) && str_contains($_SERVER['SCRIPT_NAME'], '/public/index.php')) {
-    $_SERVER['SCRIPT_NAME'] = str_replace('/public/index.php', '/index.php', $_SERVER['SCRIPT_NAME']);
+    $baseDir = str_replace('/public/index.php', '', $_SERVER['SCRIPT_NAME']);
+    $_SERVER['SCRIPT_NAME'] = $baseDir . '/index.php';
     $_SERVER['PHP_SELF']    = str_replace('/public/index.php', '/index.php', $_SERVER['PHP_SELF'] ?? '');
+
+    // Also normalize REQUEST_URI if it contains /public/ (e.g. legacy SNS webhook URLs
+    // or APP_URL misconfigured with /public suffix). Strip the extra /public segment so
+    // Laravel sees /webhook/ses instead of /public/webhook/ses.
+    $pubPrefix = $baseDir . '/public/';
+    if (isset($_SERVER['REQUEST_URI']) && str_starts_with($_SERVER['REQUEST_URI'], $pubPrefix)) {
+        $_SERVER['REQUEST_URI'] = $baseDir . '/' . substr($_SERVER['REQUEST_URI'], strlen($pubPrefix));
+    }
 }
 
 // Run installer if not yet installed (works on any PHP host including Herd/Valet)
