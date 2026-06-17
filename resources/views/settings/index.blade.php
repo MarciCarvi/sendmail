@@ -79,6 +79,16 @@
                             </div>
                         </div>
 
+                        <div class="mb-3">
+                            <label class="form-label">Configuration Set <span class="text-muted fw-normal">(opzionale)</span></label>
+                            <input type="text" name="ses_configuration_set"
+                                   class="form-control @error('ses_configuration_set') is-invalid @enderror"
+                                   value="{{ old('ses_configuration_set', $settings['ses_configuration_set']) }}"
+                                   placeholder="es. sendmail-notifications">
+                            @error('ses_configuration_set')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            <div class="form-text">Necessario per tracciare le delivery. Crea un Configuration Set in AWS SES con evento Delivery → SNS → <code>{{ config('app.url') }}/webhook/ses</code></div>
+                        </div>
+
                         {{-- Test connessione --}}
                         <div x-data="{ loading: false, result: null, ok: null }" class="mt-2">
                             <button type="button" class="btn btn-outline-secondary btn-sm"

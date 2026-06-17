@@ -35,7 +35,7 @@ class SesService
         string $subscriberToken
     ): string|false {
         try {
-            $result = $this->client->sendEmail([
+            $params = [
                 'Source'      => "{$fromName} <{$fromEmail}>",
                 'Destination' => ['ToAddresses' => ["{$toName} <{$to}>"]],
                 'Message'     => [
@@ -46,7 +46,14 @@ class SesService
                     ],
                 ],
                 'ReplyToAddresses' => [$replyTo],
-            ]);
+            ];
+
+            $configSet = Setting::get('ses_configuration_set');
+            if ($configSet) {
+                $params['ConfigurationSetName'] = $configSet;
+            }
+
+            $result = $this->client->sendEmail($params);
             return $result['MessageId'];
         } catch (AwsException) {
             return false;

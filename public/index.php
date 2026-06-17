@@ -1,5 +1,14 @@
 <?php
 
+// Shared hosting subfolder fix: when Apache rewrites /subfolder/path to /subfolder/public/index.php,
+// Symfony sees SCRIPT_NAME=/subfolder/public/index.php but REQUEST_URI=/subfolder/path
+// and cannot compute the correct base path. We strip /public from SCRIPT_NAME so Symfony
+// calculates the base as /subfolder instead of /subfolder/public.
+if (isset($_SERVER['SCRIPT_NAME']) && str_contains($_SERVER['SCRIPT_NAME'], '/public/index.php')) {
+    $_SERVER['SCRIPT_NAME'] = str_replace('/public/index.php', '/index.php', $_SERVER['SCRIPT_NAME']);
+    $_SERVER['PHP_SELF']    = str_replace('/public/index.php', '/index.php', $_SERVER['PHP_SELF'] ?? '');
+}
+
 // Run installer if not yet installed (works on any PHP host including Herd/Valet)
 if (!file_exists(__DIR__ . '/install/.installed')) {
     require __DIR__ . '/install/_wizard.php';

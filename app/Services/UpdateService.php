@@ -55,12 +55,14 @@ class UpdateService
             $release       = $response->json();
             $latestVersion = ltrim($release['tag_name'] ?? '', 'v');
             $releaseNotes  = $release['body'] ?? null;
+            $releaseDate   = isset($release['published_at']) ? substr($release['published_at'], 0, 10) : null;
             $hasUpdate     = version_compare($latestVersion, $currentVersion, '>');
 
             Setting::set('update_last_checked', now()->toIso8601String());
             Setting::set('update_available', $hasUpdate ? '1' : '0');
             Setting::set('update_latest_version', $latestVersion);
             Setting::set('update_release_notes', $releaseNotes);
+            Setting::set('update_release_date', $releaseDate);
 
             return compact('hasUpdate', 'latestVersion', 'currentVersion', 'releaseNotes')
                 + ['has_update' => $hasUpdate];
@@ -125,8 +127,12 @@ class UpdateService
 
         $this->copyRecursive($sourceDir, base_path(), $skip);
 
-        // Update VERSION
+        // Update VERSION and RELEASE_DATE
         file_put_contents(base_path('VERSION'), $version . "\n");
+        $releaseDate = Setting::get('update_release_date');
+        if ($releaseDate) {
+            file_put_contents(base_path('RELEASE_DATE'), $releaseDate . "\n");
+        }
 
         // Migrate + clear caches
         Artisan::call('migrate', ['--force' => true]);

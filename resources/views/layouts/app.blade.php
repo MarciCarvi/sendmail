@@ -117,6 +117,15 @@
             <main class="flex-grow-1 p-4">
                 {{ $slot }}
             </main>
+
+            <footer class="px-4 py-2 d-flex justify-content-end align-items-center border-top" style="background:#f8f9fa">
+                <span class="text-muted" style="font-size:.72rem">
+                    SendMail v{{ config('sendmail.version', '—') }}
+                    @if(config('sendmail.release_date'))
+                        &nbsp;·&nbsp;{{ \Carbon\Carbon::parse(config('sendmail.release_date'))->format('d/m/Y') }}
+                    @endif
+                </span>
+            </footer>
         </div>
 
     </div>

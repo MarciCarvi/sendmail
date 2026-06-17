@@ -1,12 +1,9 @@
 <IfModule mod_rewrite.c>
-    RewriteEngine On
+    RewriteEngine on
 
-    # Serve direttamente file e cartelle esistenti (assets, favicon, ecc.)
-    RewriteCond %{REQUEST_FILENAME} -f [OR]
-    RewriteCond %{REQUEST_FILENAME} -d
-    RewriteRule ^ - [L]
+    # Se il file esiste già in public/ (asset statici), servilo direttamente
+    RewriteRule ^public/ - [L]
 
-    # Tutto il resto → public/
-    RewriteRule ^$ public/index.php [L]
-    RewriteRule ^(?!public/)(.*)$ public/$1 [L,QSA]
+    # Per tutto il resto vai direttamente a public/index.php (preserva il metodo POST)
+    RewriteRule ^ public/index.php [L,QSA]
 </IfModule>

@@ -98,7 +98,7 @@ class CampaignSender
                 'message_id' => $messageId ?: null,
             ]);
 
-            $ok ? $sentCount++ : $failedCount++;
+            $messageId ? $sentCount++ : $failedCount++;
         }
 
         $pending = CampaignSend::where('campaign_id', $campaign->id)

@@ -8,6 +8,10 @@ return [
         ? trim(file_get_contents(base_path('VERSION')))
         : '1.0.0',
 
+    'release_date' => function_exists('file_get_contents') && file_exists(base_path('RELEASE_DATE'))
+        ? trim(file_get_contents(base_path('RELEASE_DATE')))
+        : null,
+
     'license' => [
         'pat'        => env('SM_LICENSE_PAT', ''),
         'repo'       => env('SM_LICENSES_REPO', 'marcellocarvisiglia/sendmail-licenses'),

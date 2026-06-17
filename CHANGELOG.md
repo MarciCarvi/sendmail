@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.1] - 2026-06-17
+
+### Correzioni
+- Fix: bug `$ok` undefined in CampaignSender causava contatori sent/failed sempre errati
+- Fix: `.htaccess` root compatibile con LiteSpeed/Hostinger (POST 405 risolto)
+- Fix: `public/index.php` subfolder fix per hosting condiviso (routing Laravel corretto)
+- Aggiunto: campo Configuration Set SES nelle impostazioni per tracking delivery
+- Aggiunto: versione e data rilascio nel footer dell'interfaccia
+
 ## [1.1.0] - 2026-06-17
 
 ### Novità

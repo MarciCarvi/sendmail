@@ -18,7 +18,8 @@ class SettingsController extends Controller
             'ses_key'            => Setting::getEncrypted('ses_key'),
             'ses_secret'         => Setting::getEncrypted('ses_secret'),
             'ses_region'         => Setting::get('ses_region', 'eu-west-1'),
-            'ses_sending_rate'   => Setting::get('ses_sending_rate', '14'),
+            'ses_sending_rate'        => Setting::get('ses_sending_rate', '14'),
+            'ses_configuration_set'   => Setting::get('ses_configuration_set', ''),
             'blocked_domains'    => Setting::get('blocked_domains', ''),
             'license_key'        => Setting::get('license_key', ''),
         ];
@@ -37,7 +38,8 @@ class SettingsController extends Controller
             'ses_key'            => 'nullable|string',
             'ses_secret'         => 'nullable|string',
             'ses_region'         => 'required|string',
-            'ses_sending_rate'   => 'required|integer|min:1|max:200',
+            'ses_sending_rate'        => 'required|integer|min:1|max:200',
+            'ses_configuration_set'   => 'nullable|string|max:100',
             'blocked_domains'    => 'nullable|string',
             'license_key'        => 'nullable|string|max:64',
         ]);
@@ -47,6 +49,7 @@ class SettingsController extends Controller
         Setting::set('default_from_email', $request->default_from_email);
         Setting::set('ses_region', $request->ses_region);
         Setting::set('ses_sending_rate', $request->ses_sending_rate);
+        Setting::set('ses_configuration_set', $request->ses_configuration_set ?? '');
         Setting::set('blocked_domains', $request->blocked_domains ?? '');
 
         if ($request->filled('ses_key')) {
