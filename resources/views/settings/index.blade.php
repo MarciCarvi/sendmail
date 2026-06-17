@@ -123,6 +123,44 @@
                     </div>
                 </div>
 
+                {{-- Aggiornamenti --}}
+                <div class="card mb-4">
+                    <div class="card-header fw-semibold d-flex align-items-center">
+                        Aggiornamenti
+                        <span class="badge text-bg-secondary ms-auto">v{{ config('sendmail.version') }}</span>
+                    </div>
+                    <div class="card-body">
+                        <div x-data="{ loading: false, result: null, hasUpdate: false, version: null }" class="d-flex align-items-center gap-3">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" :disabled="loading"
+                                    @click="
+                                        loading = true; result = null;
+                                        fetch('{{ route('update.force-check') }}', {
+                                            method: 'POST',
+                                            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
+                                        })
+                                        .then(r => r.json())
+                                        .then(d => {
+                                            loading = false;
+                                            hasUpdate = d.has_update;
+                                            version = d.latest_version;
+                                            result = d.has_update
+                                                ? 'Disponibile v' + d.latest_version
+                                                : 'Sei già all\'ultima versione (' + d.current_version + ')';
+                                        })
+                                        .catch(() => { loading = false; result = 'Errore di rete'; })
+                                    ">
+                                <span x-show="!loading">Verifica aggiornamenti</span>
+                                <span x-show="loading">Verifica in corso...</span>
+                            </button>
+                            <span x-show="result !== null" class="small"
+                                  :class="hasUpdate ? 'text-primary fw-semibold' : 'text-success'"
+                                  x-text="result"></span>
+                            <a x-show="hasUpdate" href="{{ route('dashboard') }}"
+                               class="btn btn-primary btn-sm">Vai alla dashboard per aggiornare</a>
+                        </div>
+                    </div>
+                </div>
+
                 {{-- Licenza --}}
                 <div class="card mb-4">
                     <div class="card-header fw-semibold d-flex align-items-center gap-2">

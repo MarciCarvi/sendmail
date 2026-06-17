@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.2] - 2026-06-17
+
+### Novità
+- Aggiunto pulsante "Verifica aggiornamenti" nella pagina Impostazioni con force-check immediato
+
 ## [1.1.1] - 2026-06-17
 
 ### Correzioni
