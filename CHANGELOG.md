@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.4] - 2026-06-17
+
+### Correzioni
+- Fix: modale changelog duplicata dopo aggiornamento (rimossa modale inline, una sola modale post-reload)
+- Fix: pulsante chiudi modale changelog non funzionante
+
 ## [1.1.3] - 2026-06-17
 
 ### Correzioni

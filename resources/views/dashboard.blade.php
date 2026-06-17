@@ -22,27 +22,7 @@
             (attuale: {{ $updateInfo['current_version'] }})
         </div>
         <button @click="applyUpdate('{{ $updateInfo['latest_version'] }}')" :disabled="applying"
-                class="btn btn-primary btn-sm" x-text="applying ? 'Aggiornamento...' : 'Aggiorna ora'"></button>
-
-        {{-- Changelog modal --}}
-        <div x-show="showChangelog" x-cloak
-             class="modal fade show d-block" style="background:rgba(0,0,0,.5)" tabindex="-1">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Aggiornamento completato</h5>
-                        <button type="button" class="btn-close" @click="showChangelog = false"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="small text-muted mb-3">Versione <strong x-text="updatedVersion"></strong> installata con successo.</div>
-                        <div x-html="changelogHtml" class="changelog-content"></div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-primary" @click="showChangelog = false; window.location.reload()">Ricarica pagina</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+                class="btn btn-primary btn-sm" x-text="applying ? 'Aggiornamento in corso...' : 'Aggiorna ora'"></button>
     </div>
     @endif
 
@@ -55,13 +35,13 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Novità di SendMail {{ session('updated_version') }}</h5>
-                        <button type="button" class="btn-close" @click="showModal = false"></button>
+                        <button type="button" class="btn-close" @click="close()"></button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body" style="max-height:60vh;overflow-y:auto">
                         <div x-html="changelogHtml"></div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-primary" @click="showModal = false">Chiudi</button>
+                        <button type="button" class="btn btn-primary" @click="close()">Chiudi</button>
                     </div>
                 </div>
             </div>
@@ -228,9 +208,6 @@
     function updater() {
         return {
             applying: false,
-            showChangelog: false,
-            changelogHtml: '',
-            updatedVersion: '',
 
             applyUpdate(version) {
                 if (!confirm('Applicare l\'aggiornamento alla versione ' + version + '?\nL\'operazione richiede circa 30-60 secondi.')) return;
@@ -244,8 +221,7 @@
                 .then(r => r.json())
                 .then(d => {
                     if (d.success) {
-                        this.updatedVersion = version;
-                        this.loadChangelog();
+                        window.location.reload();
                     } else {
                         alert('Aggiornamento fallito: ' + (d.error || 'Errore sconosciuto'));
                         this.applying = false;
@@ -255,25 +231,6 @@
                     alert('Errore di rete durante l\'aggiornamento.');
                     this.applying = false;
                 });
-            },
-
-            loadChangelog() {
-                fetch(CHANGELOG_URL)
-                    .then(r => r.json())
-                    .then(d => {
-                        this.changelogHtml = this.markdownToHtml(d.content || '');
-                        this.showChangelog = true;
-                    });
-            },
-
-            markdownToHtml(md) {
-                return md
-                    .replace(/^## (.+)$/gm, '<h5 class="mt-4 mb-2">$1</h5>')
-                    .replace(/^### (.+)$/gm, '<h6 class="mt-3 mb-1">$1</h6>')
-                    .replace(/^- (.+)$/gm, '<li>$1</li>')
-                    .replace(/(<li>.*<\/li>\n?)+/g, s => '<ul class="mb-2">' + s + '</ul>')
-                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\n\n/g, '<br>');
             },
         };
     }
@@ -290,6 +247,10 @@
                         this.changelogHtml = this.markdownToHtml(d.content || '');
                         this.showModal = true;
                     });
+            },
+
+            close() {
+                this.showModal = false;
             },
 
             markdownToHtml(md) {
