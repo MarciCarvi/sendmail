@@ -144,8 +144,8 @@
                                             hasUpdate = d.has_update;
                                             version = d.latest_version;
                                             result = d.has_update
-                                                ? 'Disponibile v' + d.latest_version
-                                                : 'Sei già all\'ultima versione (' + d.current_version + ')';
+                                                ? 'Disponibile v' + (d.latestVersion || d.latest_version)
+                                                : 'Sei già all\'ultima versione (' + (d.currentVersion || d.current_version) + ')';
                                         })
                                         .catch(() => { loading = false; result = 'Errore di rete'; })
                                     ">

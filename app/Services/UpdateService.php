@@ -64,8 +64,16 @@ class UpdateService
             Setting::set('update_release_notes', $releaseNotes);
             Setting::set('update_release_date', $releaseDate);
 
-            return compact('hasUpdate', 'latestVersion', 'currentVersion', 'releaseNotes')
-                + ['has_update' => $hasUpdate];
+            return [
+                'has_update'      => $hasUpdate,
+                'hasUpdate'       => $hasUpdate,
+                'latest_version'  => $latestVersion,
+                'latestVersion'   => $latestVersion,
+                'current_version' => $currentVersion,
+                'currentVersion'  => $currentVersion,
+                'release_notes'   => $releaseNotes,
+                'releaseNotes'    => $releaseNotes,
+            ];
 
         } catch (\Throwable $e) {
             Log::warning('SendMail update check failed: ' . $e->getMessage());
