@@ -1,0 +1,57 @@
+// =============================================================
+//  Sendmail — Bootstrap 5 theme
+//  Override delle variabili Bootstrap. NON importa Bootstrap:
+//  va incluso PRIMA di "bootstrap/scss/bootstrap" (vedi app.example.scss).
+// =============================================================
+
+// ---- Scale di marca -----------------------------------------
+$violet-50:  #F5F2FE;
+$violet-100: #EBE4FD;
+$violet-200: #D6CBFB;
+$violet-300: #BBA8F7;
+$violet-400: #9D80F1;
+$violet-500: #8B5CF6;  // brand
+$violet-600: #7A41E8;  // hover
+$violet-700: #6730CC;  // active
+$violet-800: #5526A5;
+$violet-900: #432082;
+$violet-on-dark: #A98BFB;
+
+$slate-50:  #F6F7F9;
+$slate-100: #ECEEF1;
+$slate-200: #D8DCE2;
+$slate-300: #B6BDC8;
+$slate-400: #8A93A3;
+$slate-500: #647082;
+$slate-600: #4B5666;
+$slate-700: #3F4B5B;  // UI base
+$slate-800: #2C3542;  // testo
+$slate-900: #1B212B;  // titoli
+
+// ---- Theme colors Bootstrap ---------------------------------
+$primary:   $violet-500;
+$secondary: $slate-500;
+$success:   #1FA971;
+$danger:    #F04438;
+$warning:   #E0962A;
+$info:      #2D74E0;
+$light:     $slate-50;
+$dark:      $slate-900;
+
+// ---- Corpo, testo, bordi ------------------------------------
+$body-bg:          $slate-50;
+$body-color:       $slate-800;
+$border-color:     $slate-200;
+$link-color:       $violet-600;
+$link-hover-color: $violet-700;
+
+// ---- Tipografia ---------------------------------------------
+$font-family-sans-serif: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+$headings-font-family:   "Poppins", #{$font-family-sans-serif};
+$headings-font-weight:   600;
+
+// ---- Raggi / componenti -------------------------------------
+$border-radius:    .5rem;
+$border-radius-sm: .375rem;
+$border-radius-lg: .75rem;
+$btn-font-weight:  600;

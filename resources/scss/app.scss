@@ -1,0 +1,67 @@
+// 1) Bootstrap functions
+@import "bootstrap/scss/functions";
+
+// 2) Sendmail theme overrides (palette, font, radii)
+@import "sendmail-theme";
+
+// 3) Bootstrap variables + maps
+@import "bootstrap/scss/variables";
+@import "bootstrap/scss/maps";
+
+// 4) Aggiunge "brand" alle utility (.btn-brand, .bg-brand, .text-brand)
+$theme-colors: map-merge($theme-colors, (
+  "brand": $violet-500,
+));
+
+// 5) Bootstrap completo
+@import "bootstrap/scss/bootstrap";
+
+// ── Sidebar ────────────────────────────────────────────────────────────────
+.sm-sidebar {
+  background-color: $slate-800;
+  width: 240px;
+  min-height: 100vh;
+
+  .nav-link {
+    color: rgba(255,255,255,.75);
+    border-radius: $border-radius-sm;
+    font-size: .875rem;
+    font-weight: 500;
+
+    &:hover { color: #fff; background-color: rgba(255,255,255,.08); }
+    &.active { color: #fff; background-color: $violet-600; }
+  }
+
+  .sm-sidebar-brand {
+    font-family: $headings-font-family;
+    font-weight: 700;
+    color: #fff;
+    font-size: 1.15rem;
+    text-decoration: none;
+
+    .brand-accent { color: $violet-400; }
+  }
+}
+
+// ── Top bar ────────────────────────────────────────────────────────────────
+.sm-topbar {
+  background: #fff;
+  border-bottom: 1px solid $slate-200;
+}
+
+// ── Cards ──────────────────────────────────────────────────────────────────
+.card {
+  border-color: $slate-200;
+  box-shadow: 0 1px 3px rgba(0,0,0,.05);
+}
+
+// ── Bottoni viola — forza testo bianco ────────────────────────────────────
+.btn-primary,
+.btn-brand {
+  --bs-btn-color: #fff;
+  --bs-btn-hover-color: #fff;
+  --bs-btn-active-color: #fff;
+  --bs-btn-disabled-color: #fff;
+  --bs-btn-hover-bg: #{$violet-600};
+  --bs-btn-active-bg: #{$violet-700};
+}
