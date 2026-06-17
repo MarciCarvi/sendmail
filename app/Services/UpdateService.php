@@ -148,6 +148,14 @@ class UpdateService
         Artisan::call('view:clear');
         Artisan::call('cache:clear');
 
+        // Force-delete compiled views directly (Artisan view:clear may fail on shared hosting)
+        $viewCacheDir = storage_path('framework/views');
+        if (is_dir($viewCacheDir)) {
+            foreach (glob($viewCacheDir . '/*.php') ?: [] as $f) {
+                @unlink($f);
+            }
+        }
+
         // Reset update cache
         Setting::set('update_available', '0');
         Setting::set('update_last_checked', null);

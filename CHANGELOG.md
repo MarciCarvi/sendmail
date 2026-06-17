@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.6] - 2026-06-17
+
+### Correzioni
+- Fix: modale changelog non chiudibile dopo aggiornamento (conflitto Bootstrap `d-block !important` con Alpine `x-show`)
+- Fix: aggiunto click sul backdrop per chiudere la modale
+- Fix: pulizia forzata dei file view compilati dopo aggiornamento (evita cache stale su hosting condiviso)
+
 ## [1.1.5] - 2026-06-17
 
 ### Correzioni

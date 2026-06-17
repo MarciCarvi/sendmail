@@ -30,7 +30,9 @@
     @if(session('show_changelog'))
     <div x-data="changelogViewer()" x-init="loadChangelog()" class="mb-4">
         <div x-show="showModal" x-cloak
-             class="modal fade show d-block" style="background:rgba(0,0,0,.5)" tabindex="-1">
+             class="modal fade show" :class="showModal ? 'd-block' : ''"
+             style="background:rgba(0,0,0,.5)" tabindex="-1"
+             @click.self="close()">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
