@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.5] - 2026-06-17
+
+### Correzioni
+- Fix: "Disponibile vundefined" in verifica aggiornamenti (chiavi JSON camelCase e snake_case uniformate)
+
 ## [1.1.4] - 2026-06-17
 
 ### Correzioni
