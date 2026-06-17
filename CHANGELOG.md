@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.7] - 2026-06-17
+
+### Correzioni
+- Fix: public/build/ (CSS/JS compilati) inclusi nel pacchetto di rilascio — il CSS non sparisce più dopo l'aggiornamento
+- Fix: public/build protetto da sovrascrittura durante gli aggiornamenti futuri
+
 ## [1.1.6] - 2026-06-17
 
 ### Correzioni

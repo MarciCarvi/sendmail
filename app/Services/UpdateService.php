@@ -131,7 +131,7 @@ class UpdateService
         $sourceDir = $dirs[0];
 
         // Paths to never overwrite
-        $skip = ['.env', 'storage', 'install/.installed', 'install/done.php'];
+        $skip = ['.env', 'storage', 'public/build', 'install/.installed', 'install/done.php'];
 
         $this->copyRecursive($sourceDir, base_path(), $skip);
 
