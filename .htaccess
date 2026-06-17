@@ -1,13 +1,10 @@
 <IfModule mod_rewrite.c>
     RewriteEngine on
 
-    # Richieste già dentro public/ — servi senza alterare
-    RewriteRule ^public/ - [L]
-
-    # Asset statici: mappa i prefissi noti verso public/
+    # Asset statici: mappa i prefissi noti verso public/ (public/.htaccess li serve come file)
     RewriteRule ^(build|img|favicon|storage)(/.*)?$ public/$1$2 [L,QSA]
     RewriteRule ^(embed\.js|favicon\.ico|robots\.txt)$ public/$1 [L]
 
-    # Tutto il resto → Laravel
+    # Tutto il resto → Laravel (inclusi path con /public/ come webhook SNS)
     RewriteRule ^ public/index.php [L,QSA]
 </IfModule>

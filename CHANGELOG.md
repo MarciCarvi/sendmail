@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.11] - 2026-06-17
+
+### Correzioni
+- Fix critico: POST da SNS non raggiungeva il webhook — `RewriteRule ^public/ - [L]` su LiteSpeed blocca silenziosamente le richieste POST verso directory. Rimossa la regola: ora tutte le richieste non-asset vanno direttamente a `public/index.php [L,QSA]`.
+
 ## [1.1.10] - 2026-06-17
 
 ### Debug / Correzioni
