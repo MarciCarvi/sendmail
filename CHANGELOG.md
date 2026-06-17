@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.3] - 2026-06-17
+
+### Correzioni
+- Fix: chiavi array opzionali in settings/index.blade.php (ses_configuration_set, license_key) gestite con fallback ?? ""
+
 ## [1.1.2] - 2026-06-17
 
 ### Novità

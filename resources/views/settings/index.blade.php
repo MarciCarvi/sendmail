@@ -83,7 +83,7 @@
                             <label class="form-label">Configuration Set <span class="text-muted fw-normal">(opzionale)</span></label>
                             <input type="text" name="ses_configuration_set"
                                    class="form-control @error('ses_configuration_set') is-invalid @enderror"
-                                   value="{{ old('ses_configuration_set', $settings['ses_configuration_set']) }}"
+                                   value="{{ old('ses_configuration_set', $settings['ses_configuration_set'] ?? '') }}"
                                    placeholder="es. sendmail-notifications">
                             @error('ses_configuration_set')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             <div class="form-text">Necessario per tracciare le delivery. Crea un Configuration Set in AWS SES con evento Delivery → SNS → <code>{{ config('app.url') }}/webhook/ses</code></div>
@@ -182,7 +182,7 @@
                             <div x-data="{ show: false }" class="input-group">
                                 <input :type="show ? 'text' : 'password'" name="license_key"
                                        class="form-control font-monospace @error('license_key') is-invalid @enderror"
-                                       value="{{ old('license_key', $settings['license_key']) }}"
+                                       value="{{ old('license_key', $settings['license_key'] ?? '') }}"
                                        placeholder="Inserisci il codice licenza ricevuto" autocomplete="off">
                                 <button type="button" class="btn btn-outline-secondary" @click="show = !show"
                                         :title="show ? 'Nascondi' : 'Mostra'">
