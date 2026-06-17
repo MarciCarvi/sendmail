@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.8] - 2026-06-17
+
+### Correzioni
+- Fix: CSS/JS/immagini non caricano su hosting in sottocartella — .htaccess radice ora mappa i path degli asset statici (build/, img/, favicon/) verso public/ invece di passarli a Laravel
+
 ## [1.1.7] - 2026-06-17
 
 ### Correzioni

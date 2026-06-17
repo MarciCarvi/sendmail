@@ -1,9 +1,13 @@
 <IfModule mod_rewrite.c>
     RewriteEngine on
 
-    # Se il file esiste già in public/ (asset statici), servilo direttamente
+    # Richieste già dentro public/ — servi senza alterare
     RewriteRule ^public/ - [L]
 
-    # Per tutto il resto vai direttamente a public/index.php (preserva il metodo POST)
+    # Asset statici: mappa i prefissi noti verso public/
+    RewriteRule ^(build|img|favicon|storage)(/.*)?$ public/$1$2 [L,QSA]
+    RewriteRule ^(embed\.js|favicon\.ico|robots\.txt)$ public/$1 [L]
+
+    # Tutto il resto → Laravel
     RewriteRule ^ public/index.php [L,QSA]
 </IfModule>
