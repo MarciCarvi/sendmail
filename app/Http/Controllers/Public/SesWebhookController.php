@@ -6,14 +6,23 @@ use App\Http\Controllers\Controller;
 use App\Models\Subscriber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class SesWebhookController extends Controller
 {
     public function __invoke(Request $request)
     {
-        $payload = json_decode($request->getContent(), true);
+        $raw = $request->getContent();
+        Log::channel('single')->info('SNS webhook received', [
+            'method' => $request->method(),
+            'url'    => $request->fullUrl(),
+            'body'   => substr($raw, 0, 500),
+        ]);
+
+        $payload = json_decode($raw, true);
 
         if (!$payload) {
+            Log::channel('single')->warning('SNS webhook: invalid JSON payload');
             return response('Bad Request', 400);
         }
 
@@ -53,10 +62,12 @@ class SesWebhookController extends Controller
 
         if ($notifType === 'Delivery') {
             $messageId = $message['mail']['messageId'] ?? null;
+            Log::channel('single')->info('SNS Delivery notification', ['messageId' => $messageId]);
             if ($messageId) {
-                \App\Models\CampaignSend::where('message_id', $messageId)
+                $updated = \App\Models\CampaignSend::where('message_id', $messageId)
                     ->whereNull('delivered_at')
                     ->update(['delivered_at' => now()]);
+                Log::channel('single')->info('SNS Delivery update result', ['rows' => $updated, 'messageId' => $messageId]);
             }
         }
 

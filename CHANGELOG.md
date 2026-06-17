@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.10] - 2026-06-17
+
+### Debug / Correzioni
+- Aggiunto logging dettagliato al webhook SNS (storage/logs/laravel.log) per diagnosticare mancati aggiornamenti delivery
+
 ## [1.1.9] - 2026-06-17
 
 ### Correzioni
