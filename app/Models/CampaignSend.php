@@ -8,7 +8,7 @@ class CampaignSend extends Model
 {
     protected $table = 'sm_campaign_sends';
 
-    protected $fillable = ['campaign_id', 'subscriber_id', 'status', 'sent_at'];
+    protected $fillable = ['campaign_id', 'subscriber_id', 'status', 'sent_at', 'message_id', 'delivered_at'];
 
     protected $casts = ['sent_at' => 'datetime'];
 

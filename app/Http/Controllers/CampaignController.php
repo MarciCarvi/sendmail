@@ -81,9 +81,9 @@ class CampaignController extends Controller
         $request->validate(['test_email' => 'required|email']);
 
         $stub = new \App\Models\Subscriber([
-            'first_name' => 'Mario',
-            'last_name'  => 'Rossi',
-            'company'    => 'Acme Srl',
+            'first_name' => 'Test',
+            'last_name'  => 'User',
+            'company'    => '',
             'email'      => $request->test_email,
         ]);
         $html = self::replaceVariables($campaign->html_content ?? '', $stub);
@@ -91,7 +91,31 @@ class CampaignController extends Controller
 
         try {
             $ses = app(SesService::class);
-            $ses->send(
+
+            // Find or create a subscriber record for the test email so we can track delivery
+            $listId = $campaign->lists()->value('sm_lists.id')
+                ?? \App\Models\MailList::value('id');
+
+            $subscriber = $listId
+                ? \App\Models\Subscriber::firstOrCreate(
+                    ['email' => strtolower($request->test_email)],
+                    [
+                        'list_id'    => $listId,
+                        'first_name' => 'Test',
+                        'status'     => 'subscribed',
+                        'token'      => \Illuminate\Support\Str::random(64),
+                    ]
+                )
+                : null;
+
+            // Create a send record so delivery tracking works
+            $send = $subscriber ? \App\Models\CampaignSend::create([
+                'campaign_id'   => $campaign->id,
+                'subscriber_id' => $subscriber->id,
+                'status'        => 'pending',
+            ]) : null;
+
+            $messageId = $ses->send(
                 to:              $request->test_email,
                 toName:          'Test',
                 subject:         '[TEST] ' . $campaign->subject,
@@ -101,9 +125,21 @@ class CampaignController extends Controller
                 fromName:        $campaign->from_name,
                 replyTo:         $campaign->reply_to ?? $campaign->from_email,
                 campaignId:      (string) $campaign->id,
-                subscriberToken: 'test',
+                subscriberToken: $subscriber?->token ?? 'test',
             );
-            return response()->json(['success' => true, 'message' => "Email di test inviata a {$request->test_email}"]);
+
+            if ($send) {
+                $send->update([
+                    'status'     => $messageId ? 'sent' : 'failed',
+                    'sent_at'    => now(),
+                    'message_id' => $messageId ?: null,
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Email di test inviata a {$request->test_email}" . ($messageId ? " (message_id: {$messageId})" : ''),
+            ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }

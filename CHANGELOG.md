@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.12] - 2026-06-19
+
+### Correzioni
+- Fix critico: `message_id` e `delivered_at` non venivano mai salvati in `sm_campaign_sends` — campi mancanti da `$fillable` nel modello. Il delivery tracking non ha mai funzionato per questo motivo.
+- Fix: "Invia email di test" ora crea un record in `sm_campaign_sends` con il `message_id` SES, permettendo di verificare la catena SNS → webhook → `delivered_at` senza inviare una campagna completa.
+
 ## [1.1.11] - 2026-06-17
 
 ### Correzioni
