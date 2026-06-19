@@ -35,7 +35,7 @@ PEM,
     ],
 
     'updates' => [
-        'repo'                 => env('SM_RELEASES_REPO', 'marcellocarvisiglia/sendmail'),
+        'repo'                 => env('SM_RELEASES_REPO', 'MarciCarvi/sendmail'),
         'check_interval_hours' => 24,
     ],
 
