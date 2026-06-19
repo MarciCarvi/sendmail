@@ -20,6 +20,10 @@ class RegisteredUserController extends Controller
      */
     public function create(): View
     {
+        // Single-tenant app: registration is only allowed to bootstrap the very
+        // first admin. Once any user exists, the panel is closed to new signups.
+        abort_if(User::exists(), 403, 'La registrazione è disabilitata.');
+
         return view('auth.register');
     }
 
@@ -30,6 +34,8 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        abort_if(User::exists(), 403, 'La registrazione è disabilitata.');
+
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],

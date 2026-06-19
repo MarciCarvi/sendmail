@@ -183,10 +183,10 @@ class SubscriberController extends Controller
             $list->subscribers()->orderBy('email')->chunk(500, function ($subscribers) use ($handle) {
                 foreach ($subscribers as $sub) {
                     fputcsv($handle, [
-                        $sub->email,
-                        $sub->first_name,
-                        $sub->last_name,
-                        $sub->company,
+                        $this->csvSafe($sub->email),
+                        $this->csvSafe($sub->first_name),
+                        $this->csvSafe($sub->last_name),
+                        $this->csvSafe($sub->company),
                         $sub->status,
                         $sub->subscribed_at?->format('Y-m-d H:i:s'),
                     ]);
@@ -195,6 +195,19 @@ class SubscriberController extends Controller
 
             fclose($handle);
         }, "lista-{$list->id}-iscritti.csv", ['Content-Type' => 'text/csv']);
+    }
+
+    /**
+     * Neutralize CSV formula injection: a leading = + - @ (or tab/CR) makes
+     * spreadsheet apps execute the cell as a formula. Prefix with an apostrophe.
+     */
+    private function csvSafe(?string $value): string
+    {
+        $value = (string) $value;
+        if ($value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'" . $value;
+        }
+        return $value;
     }
 
     public function bulk(Request $request, MailList $list)

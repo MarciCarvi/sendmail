@@ -1,0 +1,10 @@
+# Installer files are included server-side by public/index.php only.
+# They must never be reachable over HTTP. The PHP guard in _wizard.php is the
+# primary defense; this is belt-and-suspenders for Apache/LiteSpeed hosts.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

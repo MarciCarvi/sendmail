@@ -35,7 +35,7 @@ class LicenseService
             return $this->applyGrace('Nessuna licenza configurata. Inserisci la tua chiave nelle impostazioni.');
         }
 
-        $result = $this->validateWithGitHub($licenseKey);
+        $result = $this->validateWithServer($licenseKey);
 
         if ($result['valid']) {
             Setting::set('license_grace_start', null);
@@ -65,83 +65,79 @@ class LicenseService
         return ['valid' => false, 'grace' => false, 'days_left' => 0, 'error' => $error, 'status' => 'blocked'];
     }
 
-    private function validateWithGitHub(string $licenseKey): array
+    /**
+     * Valida la chiave contro il license server. Il server firma la risposta con
+     * RSA; verifichiamo la firma con la chiave pubblica embedded nella config.
+     * In questo modo nessun segreto vive sul client e una risposta non firmata
+     * dal nostro server (host spoofato, MITM) viene rifiutata.
+     */
+    private function validateWithServer(string $licenseKey): array
     {
-        $pat  = config('sendmail.license.pat');
-        $repo = config('sendmail.license.repo');
-        $file = config('sendmail.license.file');
+        $endpoint  = config('sendmail.license.api');
+        $publicKey = config('sendmail.license.public_key');
 
-        if (!$pat || !$repo) {
-            return ['valid' => false, 'error' => 'Server licenze non configurato (SM_LICENSE_PAT mancante).'];
+        if (!$endpoint || !$publicKey) {
+            return ['valid' => false, 'error' => 'Server licenze non configurato.'];
         }
+
+        $domain = $this->getCurrentDomain();
 
         try {
             $response = Http::timeout(8)
-                ->withHeaders([
-                    'Authorization' => 'Bearer ' . $pat,
-                    'Accept'        => 'application/vnd.github.v3+json',
-                    'User-Agent'    => 'SendMail-License/1.0',
-                ])
-                ->get("https://api.github.com/repos/{$repo}/contents/{$file}");
-
-            if ($response->status() === 404) {
-                return ['valid' => false, 'error' => 'File licenze non trovato nel repository.'];
-            }
+                ->acceptJson()
+                ->asJson()
+                ->post($endpoint, [
+                    'key'     => $licenseKey,
+                    'domain'  => $domain,
+                    'version' => $this->getCurrentVersion(),
+                ]);
 
             if (!$response->successful()) {
                 return ['valid' => false, 'error' => 'Server licenze non raggiungibile (HTTP ' . $response->status() . ').'];
             }
 
-            $raw      = $response->json('content');
-            $licenses = json_decode(base64_decode(str_replace(["\n", "\r"], '', $raw)), true) ?? [];
+            $payload   = (string) $response->json('payload', '');
+            $signature = base64_decode((string) $response->json('signature', ''), true);
 
-            if (!array_key_exists($licenseKey, $licenses)) {
-                return ['valid' => false, 'error' => 'Codice licenza non riconosciuto.'];
+            if ($payload === '' || $signature === false) {
+                return ['valid' => false, 'error' => 'Risposta licenza malformata.'];
             }
 
-            $entry  = $licenses[$licenseKey];
-            $domain = $this->getCurrentDomain();
+            // Verifica firma RSA-SHA256.
+            if (openssl_verify($payload, $signature, $publicKey, OPENSSL_ALGO_SHA256) !== 1) {
+                return ['valid' => false, 'error' => 'Firma licenza non valida.'];
+            }
 
-            if (empty($entry['domain'])) {
-                $sha = $response->json('sha');
-                $licenses[$licenseKey]['domain']   = $domain;
-                $licenses[$licenseKey]['bound_at'] = now()->toIso8601String();
-                $this->updateGitHubFile($licenses, $sha);
+            $data = json_decode($payload, true);
+            if (!is_array($data)) {
+                return ['valid' => false, 'error' => 'Payload licenza non valido.'];
+            }
+
+            // Lega la risposta a QUESTO dominio e controlla la scadenza: una
+            // risposta valida di un'altra installazione non è riutilizzabile qui.
+            if (($data['domain'] ?? null) !== $domain) {
+                return ['valid' => false, 'error' => 'Licenza associata a un altro dominio.'];
+            }
+            if ((int) ($data['expires'] ?? 0) < time()) {
+                return ['valid' => false, 'error' => 'Risposta licenza scaduta.'];
+            }
+
+            if (!empty($data['valid'])) {
                 return ['valid' => true];
             }
 
-            if ($entry['domain'] !== $domain) {
-                return ['valid' => false, 'error' => "Licenza già associata al dominio '{$entry['domain']}'. Contatta il supporto per trasferirla."];
-            }
+            $message = match ($data['status'] ?? '') {
+                'unknown'         => 'Codice licenza non riconosciuto.',
+                'suspended'       => 'Licenza sospesa. Contatta il supporto.',
+                'domain_mismatch' => 'Licenza già associata a un altro dominio.',
+                default           => 'Licenza non valida.',
+            };
 
-            return ['valid' => true];
+            return ['valid' => false, 'error' => $message];
 
         } catch (\Throwable $e) {
             Log::warning('SendMail license check failed: ' . $e->getMessage());
             return ['valid' => false, 'error' => 'Impossibile contattare il server licenze. Riprova più tardi.'];
-        }
-    }
-
-    private function updateGitHubFile(array $licenses, string $sha): void
-    {
-        $pat  = config('sendmail.license.pat');
-        $repo = config('sendmail.license.repo');
-        $file = config('sendmail.license.file');
-
-        try {
-            Http::timeout(8)
-                ->withHeaders([
-                    'Authorization' => 'Bearer ' . $pat,
-                    'Accept'        => 'application/vnd.github.v3+json',
-                    'User-Agent'    => 'SendMail-License/1.0',
-                ])
-                ->put("https://api.github.com/repos/{$repo}/contents/{$file}", [
-                    'message' => 'Bind license to ' . $this->getCurrentDomain(),
-                    'content' => base64_encode(json_encode($licenses, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)),
-                    'sha'     => $sha,
-                ]);
-        } catch (\Throwable $e) {
-            Log::warning('SendMail license bind failed: ' . $e->getMessage());
         }
     }
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
 use App\Models\CampaignOpen;
+use App\Models\CampaignSend;
 use App\Models\Subscriber;
 use App\Services\TrackingService;
 use Illuminate\Http\Request;
@@ -14,7 +15,10 @@ class TrackOpenController extends Controller
     {
         $subscriber = Subscriber::where('token', $token)->first();
 
-        if ($subscriber) {
+        // Only record the open for a genuine recipient of this campaign —
+        // prevents stats pollution via arbitrary campaign IDs.
+        if ($subscriber && CampaignSend::where('campaign_id', $campaignId)
+                ->where('subscriber_id', $subscriber->id)->exists()) {
             CampaignOpen::create([
                 'campaign_id'   => $campaignId,
                 'subscriber_id' => $subscriber->id,

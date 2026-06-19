@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.3.0] - 2026-06-19
+
+### Sicurezza / Licensing
+- **Rimosso il PAT GitHub dal client.** Prima ogni installazione cliente conteneva nel `.env` un Personal Access Token GitHub con permessi di scrittura: chiunque avesse accesso al proprio `.env` poteva estrarlo. La validazione della licenza ora avviene su un license server dedicato (`carvisiglia.com/sendmail-license`) che firma le risposte con RSA. Il client verifica la firma con una chiave **pubblica** embedded (innocua) — nessun segreto risiede più lato cliente.
+- Il binding dominio↔licenza è gestito server-side; sparisce la scrittura su GitHub e quindi la necessità di un token con permessi di scrittura.
+- Mantenuto il periodo di grace offline di 3 giorni se il license server è irraggiungibile.
+
+> Questa release include anche tutte le correzioni di sicurezza elencate nella 1.2.1 qui sotto.
+
+## [1.2.1] - 2026-06-19
+
+### Sicurezza
+- **Critico — Installer ri-eseguibile**: `public/install/_wizard.php` era raggiungibile via HTTP anche dopo l'installazione, permettendo di sovrascrivere `.env`, rigenerare `APP_KEY` e dirottare DB/admin. Aggiunto guard `.installed` in cima al wizard e `public/install/.htaccess` che nega l'accesso diretto.
+- **Critico — Registrazione aperta**: chiunque poteva registrarsi e ottenere accesso completo al pannello (app single-tenant, nessun ruolo). La registrazione è ora consentita solo per il primo admin; una volta creato un utente è disabilitata.
+- **Critico — Webhook SES senza verifica firma + SSRF**: `/webhook/ses` accettava notifiche non autenticate (bounce/complaint/delivery falsificabili) e seguiva `SubscribeURL` arbitrari. Aggiunta verifica della firma SNS via OpenSSL e allowlist host `sns.*.amazonaws.com` su `SigningCertURL` e `SubscribeURL`. Rimosso il log di debug delivery non limitato.
+- **Open redirect**: il tracking dei click ora segue solo URL `http`/`https` (bloccati `javascript:`, `data:`, ecc.).
+- **CSV injection**: l'export iscritti neutralizza i campi che iniziano con `= + - @` (esecuzione formule in Excel/Sheets).
+- **Rate limiting** sugli endpoint pubblici: tracking 240/min, unsubscribe/opt-in 30/min, form embed 60/min, iscrizione 10/min.
+- **Hardening**: `GET /embed/{token}` non crea più righe in DB (solo l'iscrizione reale via POST le persiste); open/click registrati solo per destinatari reali della campagna; l'aggiornamento verifica che l'archivio scaricato sia un'installazione SendMail valida prima di sovrascrivere i file.
+
 ## [1.1.12] - 2026-06-19
 
 ### Correzioni

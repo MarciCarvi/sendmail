@@ -5,6 +5,15 @@
  * Included by public/index.php before Laravel boots.
  */
 
+// Hard guard: once installed, this file must never run again — neither when
+// included by index.php nor when requested directly (e.g. /install/_wizard.php).
+// Without this, anyone could re-run the installer post-deploy and overwrite
+// .env / regenerate APP_KEY / hijack the DB and admin account.
+if (file_exists(__DIR__ . '/.installed')) {
+    http_response_code(404);
+    exit;
+}
+
 session_name('sm_install');
 session_start();
 

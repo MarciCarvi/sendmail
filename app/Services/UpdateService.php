@@ -130,6 +130,15 @@ class UpdateService
         }
         $sourceDir = $dirs[0];
 
+        // Sanity check: the archive must actually look like a SendMail/Laravel
+        // tree before we overwrite application files with it. Guards against a
+        // malformed or unexpected download clobbering the install.
+        if (!file_exists($sourceDir . '/artisan') || !file_exists($sourceDir . '/composer.json')) {
+            $this->removeDir($extractDir);
+            @unlink($zipPath);
+            return ['success' => false, 'error' => 'Archivio non riconosciuto: aggiornamento annullato.'];
+        }
+
         // Paths to never overwrite
         $skip = ['.env', 'storage', 'public/build', 'install/.installed', 'install/done.php'];
 
@@ -156,6 +165,9 @@ class UpdateService
             }
         }
 
+        // Extract release notes for this version from the freshly-copied CHANGELOG.md
+        Setting::set('update_release_notes', $this->extractChangelogNotes($version));
+
         // Reset update cache
         Setting::set('update_available', '0');
         Setting::set('update_last_checked', null);
@@ -166,6 +178,22 @@ class UpdateService
         $this->removeDir($extractDir);
 
         return ['success' => true];
+    }
+
+    private function extractChangelogNotes(string $version): ?string
+    {
+        $changelog = base_path('CHANGELOG.md');
+        if (!file_exists($changelog)) {
+            return null;
+        }
+
+        $content = file_get_contents($changelog);
+        // Match the section for this version: from ## [x.y.z] to the next ## heading
+        if (preg_match('/^## \[' . preg_quote($version, '/') . '\][^\n]*\n(.*?)(?=^## |\z)/ms', $content, $m)) {
+            return trim($m[1]);
+        }
+
+        return null;
     }
 
     private function copyRecursive(string $src, string $dst, array $skip): void

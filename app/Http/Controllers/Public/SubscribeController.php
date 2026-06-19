@@ -15,7 +15,10 @@ class SubscribeController extends Controller
 {
     public function form(string $token)
     {
-        $list = $this->resolveList($token);
+        // Do NOT persist on GET — a crawler hitting /embed/{anything} must not
+        // create list rows. Render the form against an in-memory list; the row
+        // is created only when someone actually subscribes (POST).
+        $list = $this->resolveList($token, createIfMissing: false);
         return view('public.subscribe', compact('list', 'token'));
     }
 
@@ -76,20 +79,26 @@ class SubscribeController extends Controller
             'Iscrizione completata! Grazie.');
     }
 
-    private function resolveList(string $token): MailList
+    private function resolveList(string $token, bool $createIfMissing = true): MailList
     {
         $list = MailList::where('api_token', $token)->first();
 
         if (!$list) {
             // Auto-crea la lista dal token (es. "website" → lista "Website")
             $name = ucfirst(str_replace(['-', '_'], ' ', $token));
-            $list = MailList::create([
-                'api_token'  => $token,
-                'name'       => $name,
-                'from_name'  => Setting::get('default_from_name', config('app.name')),
-                'from_email' => Setting::get('default_from_email', ''),
+            $attributes = [
+                'api_token'    => $token,
+                'name'         => $name,
+                'from_name'    => Setting::get('default_from_name', config('app.name')),
+                'from_email'   => Setting::get('default_from_email', ''),
                 'double_optin' => 0,
-            ]);
+            ];
+
+            // On GET (form display) return an unsaved instance so crawlers can't
+            // create rows; only a real subscription (POST) persists the list.
+            $list = $createIfMissing
+                ? MailList::create($attributes)
+                : new MailList($attributes);
         }
 
         return $list;
