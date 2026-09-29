@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.4.0] - 2026-06-20
+
+### Novità
+- **Profili di invio ("vesti")**: nuova sezione *Profili di invio* per gestire più mittenti nella stessa installazione. Ogni profilo raccoglie nome/email mittente, reply-to e Configuration Set SES. Nella campagna un menu a tendina sceglie il profilo e precompila i campi mittente; l'invio (campagna e test) usa il Configuration Set del profilo, con fallback su quello globale di Impostazioni.
+
 ## [1.3.0] - 2026-06-19
 
 ### Sicurezza / Licensing

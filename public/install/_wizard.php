@@ -525,16 +525,25 @@ function install_sql(string $p): array
           KEY `{$p}subscribers_list_id_index` (`list_id`), KEY `{$p}subscribers_email_index` (`email`),
           CONSTRAINT `{$p}subscribers_list_id_foreign` FOREIGN KEY (`list_id`) REFERENCES `{$p}lists` (`id`) ON DELETE CASCADE
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
+        ["{$p}sender_profiles", "CREATE TABLE IF NOT EXISTS `{$p}sender_profiles` (
+          `id` bigint unsigned NOT NULL AUTO_INCREMENT, `name` varchar(100) NOT NULL,
+          `from_name` varchar(100) NOT NULL, `from_email` varchar(255) NOT NULL,
+          `reply_to` varchar(255) DEFAULT NULL, `configuration_set` varchar(100) DEFAULT NULL,
+          `created_at` timestamp NULL DEFAULT NULL, `updated_at` timestamp NULL DEFAULT NULL,
+          PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
         ["{$p}campaigns", "CREATE TABLE IF NOT EXISTS `{$p}campaigns` (
           `id` bigint unsigned NOT NULL AUTO_INCREMENT, `subject` varchar(255) NOT NULL,
           `from_name` varchar(255) NOT NULL, `from_email` varchar(255) NOT NULL,
-          `reply_to` varchar(255) DEFAULT NULL, `html_content` longtext, `design_json` longtext,
+          `reply_to` varchar(255) DEFAULT NULL, `sender_profile_id` bigint unsigned DEFAULT NULL,
+          `html_content` longtext, `design_json` longtext,
           `text_content` text,
           `status` enum('draft','scheduled','sending','sent','paused') NOT NULL DEFAULT 'draft',
           `scheduled_at` timestamp NULL DEFAULT NULL, `sent_at` timestamp NULL DEFAULT NULL,
           `total_recipients` int NOT NULL DEFAULT '0',
           `created_at` timestamp NULL DEFAULT NULL, `updated_at` timestamp NULL DEFAULT NULL,
-          PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
+          PRIMARY KEY (`id`),
+          CONSTRAINT `{$p}campaigns_sender_profile_id_foreign` FOREIGN KEY (`sender_profile_id`) REFERENCES `{$p}sender_profiles` (`id`) ON DELETE SET NULL
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
         ["{$p}campaign_lists", "CREATE TABLE IF NOT EXISTS `{$p}campaign_lists` (
           `campaign_id` bigint unsigned NOT NULL, `list_id` bigint unsigned NOT NULL,
           PRIMARY KEY (`campaign_id`,`list_id`),
@@ -607,6 +616,7 @@ function install_migrations(): array
         '2026_06_15_083121_add_design_json_to_sm_campaigns',
         '2026_06_15_104849_add_delivery_fields_to_sm_campaign_sends',
         '2026_06_15_110336_add_api_token_to_sm_lists',
+        '2026_06_20_090000_create_sm_sender_profiles_table',
     ];
 }
 

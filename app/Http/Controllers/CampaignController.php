@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Campaign;
 use App\Models\CampaignSend;
 use App\Models\MailList;
+use App\Models\SenderProfile;
 use App\Models\Setting;
 use App\Models\Subscriber;
 use App\Services\CampaignSender;
@@ -26,7 +27,8 @@ class CampaignController extends Controller
             'from_name'  => Setting::get('default_from_name'),
             'from_email' => Setting::get('default_from_email'),
         ];
-        return view('campaigns.edit', compact('lists', 'defaults'));
+        $profiles = SenderProfile::orderBy('name')->get();
+        return view('campaigns.edit', compact('lists', 'defaults', 'profiles'));
     }
 
     public function store(Request $request)
@@ -41,7 +43,8 @@ class CampaignController extends Controller
     {
         $lists = MailList::orderBy('name')->get();
         $defaults = [];
-        return view('campaigns.edit', compact('campaign', 'lists', 'defaults'));
+        $profiles = SenderProfile::orderBy('name')->get();
+        return view('campaigns.edit', compact('campaign', 'lists', 'defaults', 'profiles'));
     }
 
     public function update(Request $request, Campaign $campaign)
@@ -126,6 +129,7 @@ class CampaignController extends Controller
                 replyTo:         $campaign->reply_to ?? $campaign->from_email,
                 campaignId:      (string) $campaign->id,
                 subscriberToken: $subscriber?->token ?? 'test',
+                configurationSet: $campaign->senderProfile?->configuration_set,
             );
 
             if ($send) {
@@ -152,6 +156,7 @@ class CampaignController extends Controller
             'from_name'    => 'nullable|string|max:100',
             'from_email'   => 'nullable|email',
             'reply_to'     => 'nullable|email',
+            'sender_profile_id' => 'nullable|exists:sm_sender_profiles,id',
             'html_content' => 'nullable|string',
             'design_json'  => 'nullable|string',
             'text_content' => 'nullable|string',

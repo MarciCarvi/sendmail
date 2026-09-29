@@ -10,7 +10,7 @@ class Campaign extends Model
     protected $table = 'sm_campaigns';
 
     protected $fillable = [
-        'subject', 'from_name', 'from_email', 'reply_to',
+        'subject', 'from_name', 'from_email', 'reply_to', 'sender_profile_id',
         'html_content', 'design_json', 'text_content', 'status', 'scheduled_at', 'sent_at', 'total_recipients',
     ];
 
@@ -22,6 +22,11 @@ class Campaign extends Model
     public function lists(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
         return $this->belongsToMany(MailList::class, 'sm_campaign_lists', 'campaign_id', 'list_id');
+    }
+
+    public function senderProfile(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(SenderProfile::class, 'sender_profile_id');
     }
 
     public function sends(): HasMany

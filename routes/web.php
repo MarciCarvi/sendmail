@@ -5,6 +5,7 @@ use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ListController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SenderProfileController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SubscriberController;
 use App\Http\Controllers\ImageUploadController;
@@ -24,6 +25,12 @@ Route::middleware(['auth', 'verified', 'check.license'])->group(function () {
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
     Route::post('/settings/test-ses', [SettingsController::class, 'testSes'])->name('settings.test-ses');
+
+    // Profili di invio ("vesti")
+    Route::get('/sender-profiles', [SenderProfileController::class, 'index'])->name('sender-profiles.index');
+    Route::post('/sender-profiles', [SenderProfileController::class, 'store'])->name('sender-profiles.store');
+    Route::put('/sender-profiles/{senderProfile}', [SenderProfileController::class, 'update'])->name('sender-profiles.update');
+    Route::delete('/sender-profiles/{senderProfile}', [SenderProfileController::class, 'destroy'])->name('sender-profiles.destroy');
 
     // Updates & License
     Route::get('/update/check', [UpdateController::class, 'check'])->name('update.check');

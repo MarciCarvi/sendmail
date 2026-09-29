@@ -91,6 +91,22 @@
             </div>
 
             <div class="mb-3">
+                <label class="form-label fw-semibold small">Profilo di invio</label>
+                <select name="sender_profile_id" class="form-select form-select-sm" @change="applyProfile($event.target)"
+                        @if(isset($campaign) && !$campaign->isDraft()) disabled @endif>
+                    <option value="">— Nessuno (impostazioni globali) —</option>
+                    @foreach($profiles as $p)
+                        <option value="{{ $p->id }}"
+                                data-from-name="{{ $p->from_name }}"
+                                data-from-email="{{ $p->from_email }}"
+                                data-reply-to="{{ $p->reply_to }}"
+                                @selected(old('sender_profile_id', $campaign->sender_profile_id ?? '') == $p->id)>{{ $p->name }}</option>
+                    @endforeach
+                </select>
+                <div class="form-text"><a href="{{ route('sender-profiles.index') }}" target="_blank">Gestisci profili</a></div>
+            </div>
+
+            <div class="mb-3">
                 <label class="form-label fw-semibold small">Nome mittente</label>
                 <input type="text" name="from_name" class="form-control form-control-sm @error('from_name') is-invalid @enderror"
                        value="{{ old('from_name', $campaign->from_name ?? $defaults['from_name'] ?? '') }}">
@@ -435,6 +451,17 @@ function campaignEditor() {
         immaginiLoading: false,
         copiedUrl: null,
 
+        applyProfile(select) {
+            const o = select.selectedOptions[0];
+            if (!o || !o.value) return;
+            const f = document.querySelector('[name=from_name]');
+            const e = document.querySelector('[name=from_email]');
+            const r = document.querySelector('[name=reply_to]');
+            f.value = o.dataset.fromName || '';
+            e.value = o.dataset.fromEmail || '';
+            r.value = o.dataset.replyTo || '';
+        },
+
         init() {
             unlayer.init({
                 id: 'unlayer-editor',
@@ -446,16 +473,21 @@ function campaignEditor() {
 
                 fonts: {
                     showDefaultFonts: true,
+                    // Stack robusti: font primario (web font, reso solo dove supportato:
+                    // Apple Mail/iOS), poi Open Sans (preferito), poi font di SISTEMA
+                    // simili (Segoe UI su Windows/Outlook, Helvetica Neue su Apple) che
+                    // garantiscono una resa pulita su Gmail/Outlook dove i web font sono
+                    // ignorati. Arial/sans-serif come ultima rete.
                     customFonts: [
-                        { label: 'Inter',       value: "'Inter', sans-serif",      url: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap' },
-                        { label: 'Roboto',      value: "'Roboto', sans-serif",     url: 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap' },
-                        { label: 'Open Sans',   value: "'Open Sans', sans-serif",  url: 'https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap' },
-                        { label: 'Lato',        value: "'Lato', sans-serif",       url: 'https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap' },
-                        { label: 'Montserrat',  value: "'Montserrat', sans-serif", url: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap' },
-                        { label: 'Poppins',     value: "'Poppins', sans-serif",    url: 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap' },
-                        { label: 'Raleway',     value: "'Raleway', sans-serif",    url: 'https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700&display=swap' },
-                        { label: 'Nunito',      value: "'Nunito', sans-serif",     url: 'https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap' },
-                        { label: 'Playfair',    value: "'Playfair Display', serif",url: 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap' },
+                        { label: 'Inter',       value: "'Inter', 'Open Sans', 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif",          url: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap' },
+                        { label: 'Roboto',      value: "'Roboto', 'Open Sans', 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif",         url: 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap' },
+                        { label: 'Open Sans',   value: "'Open Sans', 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif",                   url: 'https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap' },
+                        { label: 'Lato',        value: "'Lato', 'Open Sans', 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif",           url: 'https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap' },
+                        { label: 'Montserrat',  value: "'Montserrat', 'Open Sans', 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif",     url: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap' },
+                        { label: 'Poppins',     value: "'Poppins', 'Open Sans', 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif",        url: 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap' },
+                        { label: 'Raleway',     value: "'Raleway', 'Open Sans', 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif",        url: 'https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700&display=swap' },
+                        { label: 'Nunito',      value: "'Nunito', 'Open Sans', 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif",         url: 'https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap' },
+                        { label: 'Playfair',    value: "'Playfair Display', Georgia, Cambria, 'Times New Roman', serif",                            url: 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap' },
                     ],
                 },
 

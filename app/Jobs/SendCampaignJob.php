@@ -53,6 +53,7 @@ class SendCampaignJob implements ShouldQueue
             replyTo:         $campaign->reply_to ?? $campaign->from_email,
             campaignId:      (string) $campaign->id,
             subscriberToken: $subscriber->token,
+            configurationSet: $campaign->senderProfile?->configuration_set,
         );
 
         $send->update([

@@ -32,7 +32,8 @@ class SesService
         string $fromName,
         string $replyTo,
         string $campaignId,
-        string $subscriberToken
+        string $subscriberToken,
+        ?string $configurationSet = null
     ): string|false {
         try {
             $params = [
@@ -48,7 +49,7 @@ class SesService
                 'ReplyToAddresses' => [$replyTo],
             ];
 
-            $configSet = Setting::get('ses_configuration_set');
+            $configSet = $configurationSet ?: Setting::get('ses_configuration_set');
             if ($configSet) {
                 $params['ConfigurationSetName'] = $configSet;
             }
