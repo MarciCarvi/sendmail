@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.4.3] - 2026-09-29
+
+### Correzioni
+- **Salvataggio bozza senza oggetto**: salvare una campagna con oggetto, nome o email mittente vuoti dava `Column 'subject' cannot be null` (errore 500). Ora le bozze incomplete si salvano; l'invio resta bloccato finché i campi obbligatori non sono compilati.
+
 ## [1.4.2] - 2026-09-29
 
 ### Correzioni

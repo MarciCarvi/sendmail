@@ -151,7 +151,7 @@ class CampaignController extends Controller
 
     private function validateDraft(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'subject'      => 'nullable|string|max:255',
             'from_name'    => 'nullable|string|max:100',
             'from_email'   => 'nullable|email',
@@ -161,6 +161,14 @@ class CampaignController extends Controller
             'design_json'  => 'nullable|string',
             'text_content' => 'nullable|string',
         ]);
+
+        // Le colonne sono NOT NULL, ma una bozza può avere questi campi vuoti
+        // (ConvertEmptyStringsToNull li trasforma in null): salva stringa vuota.
+        foreach (['subject', 'from_name', 'from_email'] as $field) {
+            $data[$field] = $data[$field] ?? '';
+        }
+
+        return $data;
     }
 
     public function sendNow(Campaign $campaign)
