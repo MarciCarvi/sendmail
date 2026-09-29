@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.4.1] - 2026-06-20
+
+### Novità
+- Release che include i **profili di invio** introdotti nel tag `v1.4.0` (mai pubblicato come Release): usa questa versione per l'aggiornamento dal pannello.
+
+### Note
+- Al primo avvio dopo l'aggiornamento viene eseguita in automatico la migration che crea `sm_sender_profiles` e aggiunge `sender_profile_id` a `sm_campaigns`.
+- Dopo l'aggiornamento: crea i profili in *Profili di invio* e verifica in SES le email mittente di ogni profilo.
+
 ## [1.4.0] - 2026-06-20
 
 ### Novità
