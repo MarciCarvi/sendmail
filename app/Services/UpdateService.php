@@ -156,6 +156,15 @@ class UpdateService
         Artisan::call('config:clear');
         Artisan::call('view:clear');
         Artisan::call('cache:clear');
+        Artisan::call('route:clear');
+
+        // Su hosting condiviso Artisan può fallire: elimina direttamente le cache di rotte/config
+        foreach (glob(base_path('bootstrap/cache/{routes-*,config,events}.php'), GLOB_BRACE) ?: [] as $f) {
+            @unlink($f);
+        }
+        if (function_exists('opcache_reset')) {
+            @opcache_reset();
+        }
 
         // Force-delete compiled views directly (Artisan view:clear may fail on shared hosting)
         $viewCacheDir = storage_path('framework/views');
