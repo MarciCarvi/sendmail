@@ -45,7 +45,9 @@ class SesWebhookController extends Controller
         }
 
         $message = json_decode($payload['Message'] ?? '{}', true);
-        $notifType = $message['notificationType'] ?? '';
+        // Notifiche di feedback dell'identità SES usano "notificationType";
+        // gli eventi dei Configuration Set (event publishing) usano "eventType".
+        $notifType = $message['notificationType'] ?? $message['eventType'] ?? '';
 
         if ($notifType === 'Bounce') {
             $bounceType = $message['bounce']['bounceType'] ?? '';

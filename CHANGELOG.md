@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.4.4] - 2026-09-29
+
+### Correzioni
+- **Delivery/Bounce/Complaint con Configuration Set**: il webhook SES leggeva solo `notificationType` (notifiche di identità), mentre gli eventi dei Configuration Set usano `eventType`. Risultato: `delivered_at` non veniva mai valorizzato e bounce/complaint non venivano registrati. Ora sono supportati entrambi i formati.
+
 ## [1.4.3] - 2026-09-29
 
 ### Correzioni
