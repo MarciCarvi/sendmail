@@ -7,9 +7,10 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name', 'SendMail') }}</title>
 
-    <link rel="icon" href="{{ asset('favicon/favicon.ico') }}" sizes="any">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon/favicon-32.png') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('favicon/apple-touch-icon.png') }}">
+    @php($faviconV = config('sendmail.version'))
+    <link rel="icon" href="{{ asset('favicon/favicon.ico') }}?v={{ $faviconV }}" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon/favicon-32.png') }}?v={{ $faviconV }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('favicon/apple-touch-icon.png') }}?v={{ $faviconV }}">
     <meta name="theme-color" content="#8B5CF6">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">

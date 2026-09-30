@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.7] - 2026-09-30
+
+### Correzioni
+- **Favicon**: `public/favicon.ico` nel repository era un file vuoto (0 byte), quindi le installazioni aggiornate avevano la favicon della radice rotta. Ora è l'icona corretta.
+- **Web manifest**: i percorsi delle icone sono relativi, così funzionano anche nelle installazioni in sottocartella (es. `/sendmail`).
+- **Pagina di login**: aggiunto il `?v=versione` ai link della favicon (come nel resto dell'app), per far ricaricare l'icona ai browser a ogni release.
+
 ## [1.4.6] - 2026-09-30
 
 ### Novità
