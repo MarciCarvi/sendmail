@@ -6,6 +6,7 @@ use App\Models\Blacklist;
 use App\Models\MailList;
 use App\Models\Subscriber;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SubscriberController extends Controller
@@ -124,13 +125,16 @@ class SubscriberController extends Controller
         $hasHeader = in_array('email', $header);
 
         $imported = 0;
-        $skipped  = 0;
+        $skippedRows = [];   // [riga, email, motivo] per il log temporaneo
+        $seen = [];
 
         $rows = $hasHeader ? array_slice($lines, 1) : $lines;
+        $firstRowNumber = $hasHeader ? 2 : 1; // numero di riga (righe vuote escluse)
 
-        foreach ($rows as $line) {
+        foreach ($rows as $i => $line) {
             if (trim($line) === '') continue;
 
+            $rowNumber = $firstRowNumber + $i;
             $cols = $parseLine($line);
 
             if ($hasHeader) {
@@ -146,20 +150,26 @@ class SubscriberController extends Controller
             }
 
             $email = trim($data['email'] ?? '');
+
+            $reason = null;
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $skipped++;
+                $reason = 'Email non valida';
+            } elseif (Blacklist::isBlacklisted($email)) {
+                $reason = 'In blacklist';
+            } elseif (Blacklist::isDomainBlocked($email)) {
+                $reason = 'Dominio bloccato';
+            } elseif (isset($seen[strtolower($email)])) {
+                $reason = 'Duplicata nel file';
+            } elseif ($list->subscribers()->where('email', $email)->exists()) {
+                $reason = 'Già presente nella lista';
+            }
+
+            if ($reason !== null) {
+                $skippedRows[] = [$rowNumber, $email, $reason];
                 continue;
             }
 
-            if (Blacklist::isBlacklisted($email) || Blacklist::isDomainBlocked($email)) {
-                $skipped++;
-                continue;
-            }
-
-            if ($list->subscribers()->where('email', $email)->exists()) {
-                $skipped++;
-                continue;
-            }
+            $seen[strtolower($email)] = true;
 
             $list->subscribers()->create([
                 'email'      => $email,
@@ -171,7 +181,63 @@ class SubscriberController extends Controller
             $imported++;
         }
 
-        return back()->with('success', "Import completato: {$imported} aggiunti, {$skipped} saltati.");
+        $skipped = count($skippedRows);
+        $response = back()->with('success', "Import completato: {$imported} aggiunti, {$skipped} saltati.");
+
+        if ($skipped > 0) {
+            $response->with('import_log', $this->storeImportLog($skippedRows));
+        }
+
+        return $response;
+    }
+
+    /**
+     * Log temporaneo delle righe saltate: CSV in storage/app/import-logs (24 ore)
+     * più un riepilogo e le prime righe da mostrare a schermo.
+     */
+    private function storeImportLog(array $skippedRows): array
+    {
+        $dir = storage_path('app/import-logs');
+        @mkdir($dir, 0755, true);
+
+        // pulizia dei log più vecchi di 24 ore
+        foreach (glob($dir . '/*.csv') ?: [] as $old) {
+            if (filemtime($old) < time() - 86400) {
+                @unlink($old);
+            }
+        }
+
+        $token = Str::random(40);
+        $handle = fopen("{$dir}/{$token}.csv", 'w');
+        fputcsv($handle, ['riga', 'email', 'motivo']);
+        foreach ($skippedRows as [$row, $email, $reason]) {
+            fputcsv($handle, [$row, $this->csvSafe($email), $reason]);
+        }
+        fclose($handle);
+
+        $counts = [];
+        foreach ($skippedRows as [, , $reason]) {
+            $counts[$reason] = ($counts[$reason] ?? 0) + 1;
+        }
+        arsort($counts);
+
+        return [
+            'token'  => $token,
+            'counts' => $counts,
+            'total'  => count($skippedRows),
+            'rows'   => array_slice($skippedRows, 0, 200),
+        ];
+    }
+
+    public function importLog(MailList $list, string $token)
+    {
+        $path = storage_path("app/import-logs/{$token}.csv");
+
+        if (!preg_match('/^[A-Za-z0-9]{40}$/', $token) || !is_file($path) || filemtime($path) < time() - 86400) {
+            return back()->with('error', 'Il log dell\'import è scaduto o non esiste.');
+        }
+
+        return response()->download($path, "import-saltati-lista-{$list->id}.csv", ['Content-Type' => 'text/csv']);
     }
 
     public function export(MailList $list): StreamedResponse

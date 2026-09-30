@@ -51,6 +51,7 @@ Route::middleware(['auth', 'verified', 'check.license'])->group(function () {
     Route::put('/lists/{list}/subscribers/{subscriber}', [SubscriberController::class, 'update'])->name('lists.subscribers.update');
     Route::delete('/lists/{list}/subscribers/{subscriber}', [SubscriberController::class, 'destroy'])->name('lists.subscribers.destroy');
     Route::post('/lists/{list}/subscribers/import', [SubscriberController::class, 'import'])->name('lists.subscribers.import');
+    Route::get('/lists/{list}/subscribers/import-log/{token}', [SubscriberController::class, 'importLog'])->name('lists.subscribers.import-log');
     Route::get('/lists/{list}/subscribers/export', [SubscriberController::class, 'export'])->name('lists.subscribers.export');
     Route::post('/lists/{list}/subscribers/bulk', [SubscriberController::class, 'bulk'])->name('lists.subscribers.bulk');
 

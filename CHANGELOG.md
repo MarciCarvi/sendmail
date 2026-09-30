@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.4.8] - 2026-10-01
+
+### Novità
+- **Log temporaneo dell'import**: dopo l'import di una lista, il riepilogo mostra quante righe sono state saltate e perché (email non valida, in blacklist, dominio bloccato, duplicata nel file, già presente nella lista), con l'elenco consultabile a schermo (prime 200 righe) e il CSV completo scaricabile (numero di riga, email, motivo). Il CSV resta disponibile 24 ore e viene eliminato automaticamente.
+
 ## [1.4.7] - 2026-09-30
 
 ### Correzioni

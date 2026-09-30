@@ -14,6 +14,42 @@
         </div>
     </x-slot>
 
+    {{-- Log temporaneo dell'ultimo import (righe saltate) --}}
+    @if($importLog = session('import_log'))
+        <div class="card border-warning mb-3">
+            <div class="card-body">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <strong>{{ number_format($importLog['total']) }} righe saltate nell'import</strong>
+                    <span class="text-muted small">(log temporaneo, disponibile per 24 ore)</span>
+                    <a href="{{ route('lists.subscribers.import-log', [$list, $importLog['token']]) }}"
+                       class="btn btn-outline-secondary btn-sm ms-auto">Scarica CSV completo</a>
+                    <button class="btn btn-outline-secondary btn-sm" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#importLogRows">Mostra elenco</button>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach($importLog['counts'] as $reason => $n)
+                        <span class="badge bg-warning text-dark">{{ $reason }}: {{ number_format($n) }}</span>
+                    @endforeach
+                </div>
+                <div class="collapse mt-3" id="importLogRows">
+                    <div class="table-responsive" style="max-height: 320px; overflow-y: auto;">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light"><tr><th>Riga</th><th>Email</th><th>Motivo</th></tr></thead>
+                            <tbody>
+                                @foreach($importLog['rows'] as [$row, $email, $reason])
+                                    <tr><td>{{ $row }}</td><td>{{ $email !== '' ? $email : '—' }}</td><td>{{ $reason }}</td></tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @if($importLog['total'] > count($importLog['rows']))
+                        <div class="form-text">Mostrate le prime {{ count($importLog['rows']) }}: il resto è nel CSV.</div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
+
     {{-- Filtri --}}
     <form method="GET" class="row g-2 mb-3">
         <div class="col-md-5">
