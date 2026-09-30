@@ -33,6 +33,7 @@
                             <th>Mittente</th>
                             <th>Reply-to</th>
                             <th>Configuration Set</th>
+                            <th>Lista test</th>
                             <th>Campagne</th>
                             <th></th>
                         </tr>
@@ -53,6 +54,7 @@
                                         <span class="text-muted">globale</span>
                                     @endif
                                 </td>
+                                <td class="small">{{ $profile->testList?->name ?? '—' }}</td>
                                 <td>{{ $profile->campaigns_count }}</td>
                                 <td class="text-end">
                                     <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"

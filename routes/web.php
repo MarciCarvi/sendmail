@@ -82,6 +82,7 @@ Route::middleware(['auth', 'verified', 'check.license'])->group(function () {
     Route::delete('/campaigns/{campaign}', [CampaignController::class, 'destroy'])->name('campaigns.destroy');
     Route::post('/campaigns/{campaign}/duplicate', [CampaignController::class, 'duplicate'])->name('campaigns.duplicate');
     Route::post('/campaigns/{campaign}/send-test', [CampaignController::class, 'sendTest'])->name('campaigns.send-test');
+    Route::post('/campaigns/{campaign}/send-test-list', [CampaignController::class, 'sendTestToList'])->name('campaigns.send-test-list');
     Route::post('/campaigns/{campaign}/send-now', [CampaignController::class, 'sendNow'])->name('campaigns.send-now');
     Route::post('/campaigns/{campaign}/process-batch', [CampaignController::class, 'processBatch'])->name('campaigns.process-batch');
     Route::post('/campaigns/{campaign}/schedule', [CampaignController::class, 'schedule'])->name('campaigns.schedule');

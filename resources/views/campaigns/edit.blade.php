@@ -71,15 +71,25 @@
                 @php
                     $selectedListIds = old('list_ids', isset($campaign) ? $campaign->lists->pluck('id')->toArray() : []);
                 @endphp
-                <select name="list_ids[]" multiple class="form-select form-select-sm" style="min-height: 100px;">
-                    @foreach($lists as $list)
-                        <option value="{{ $list->id }}"
-                            {{ in_array($list->id, $selectedListIds) ? 'selected' : '' }}>
-                            {{ $list->name }}
-                        </option>
-                    @endforeach
-                </select>
-                <div class="form-text">Tieni premuto <kbd>Ctrl</kbd> (o <kbd>⌘</kbd>) per selezionare più liste.</div>
+                <div class="border rounded bg-white p-2" style="max-height: 160px; overflow-y: auto;" id="recipientLists">
+                    @forelse($lists as $list)
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="list_ids[]"
+                                   value="{{ $list->id }}" id="list_{{ $list->id }}"
+                                   {{ in_array($list->id, $selectedListIds) ? 'checked' : '' }}>
+                            <label class="form-check-label small" for="list_{{ $list->id }}">{{ $list->name }}</label>
+                        </div>
+                    @empty
+                        <span class="text-muted small">Nessuna lista disponibile.</span>
+                    @endforelse
+                </div>
+                @if($lists->count() > 1)
+                    <div class="form-text">
+                        <a href="#" onclick="document.querySelectorAll('#recipientLists input').forEach(i => i.checked = true); return false;">Tutte</a>
+                        ·
+                        <a href="#" onclick="document.querySelectorAll('#recipientLists input').forEach(i => i.checked = false); return false;">Nessuna</a>
+                    </div>
+                @endif
             </div>
 
             <div class="mb-3">
@@ -100,6 +110,7 @@
                                 data-from-name="{{ $p->from_name }}"
                                 data-from-email="{{ $p->from_email }}"
                                 data-reply-to="{{ $p->reply_to }}"
+                                data-test-list-id="{{ $p->test_list_id }}"
                                 @selected(old('sender_profile_id', $campaign->sender_profile_id ?? '') == $p->id)>{{ $p->name }}</option>
                     @endforeach
                 </select>
@@ -137,29 +148,38 @@
         {{-- Invio di test --}}
         @if(isset($campaign))
                 <hr class="my-2">
-                <div x-data="{ testEmail: '', loading: false, result: null, ok: null }">
+                @php
+                    $defaultTestListId = $campaign->senderProfile?->test_list_id;
+                    if (!$testLists->contains('id', $defaultTestListId)) $defaultTestListId = '';
+                @endphp
+                <div x-data="testSender('{{ $defaultTestListId }}')">
                     <label class="form-label fw-semibold small">Email di test</label>
                     <input type="email" x-model="testEmail" class="form-control form-control-sm mb-2"
                            placeholder="tuaemail@esempio.com">
-                    <button type="button" class="btn btn-outline-secondary btn-sm w-100"
+                    <button type="button" class="btn btn-outline-secondary btn-sm w-100 mb-3"
                             :disabled="loading || !testEmail"
-                            @click="
-                                loading = true; result = null;
-                                fetch('{{ route('campaigns.send-test', $campaign) }}', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
-                                    },
-                                    body: JSON.stringify({ test_email: testEmail })
-                                })
-                                .then(r => r.json())
-                                .then(d => { result = d.message; ok = d.success; loading = false; })
-                                .catch(() => { result = 'Errore'; ok = false; loading = false; })
-                            ">
+                            @click="sendSingle()">
                         <span x-show="!loading">Invia test</span>
                         <span x-show="loading">Invio...</span>
                     </button>
+
+                    <label class="form-label fw-semibold small">Lista di test</label>
+                    <select id="testListSelect" x-model="testListId" class="form-select form-select-sm mb-2">
+                        <option value="">— Scegli una lista —</option>
+                        @foreach($testLists as $tl)
+                            <option value="{{ $tl->id }}">{{ $tl->name }}</option>
+                        @endforeach
+                    </select>
+                    <button type="button" class="btn btn-outline-secondary btn-sm w-100"
+                            :disabled="loading || !testListId"
+                            @click="sendList()">
+                        <span x-show="!loading">Invia test alla lista</span>
+                        <span x-show="loading">Invio...</span>
+                    </button>
+                    @if($testLists->isEmpty())
+                        <div class="form-text">Nessuna lista di test: creala in <a href="{{ route('lists.index') }}" target="_blank">Liste</a> con la casella «Lista di test».</div>
+                    @endif
+
                     <div x-show="result" class="mt-1 small" :class="ok ? 'text-success' : 'text-danger'" x-text="result"></div>
                 </div>
             @endif
@@ -434,6 +454,40 @@ const BLOCKS_URL  = '{{ route('unlayer.blocks') }}';
 const IMAGES_URL  = '{{ route('upload.images') }}';
 const UPLOAD_URL  = IMAGES_URL;
 
+const TEST_URL      = @json(isset($campaign) ? route('campaigns.send-test', $campaign) : null);
+const TEST_LIST_URL = @json(isset($campaign) ? route('campaigns.send-test-list', $campaign) : null);
+
+function testSender(defaultListId) {
+    return {
+        testEmail: '',
+        testListId: defaultListId || '',
+        loading: false,
+        result: null,
+        ok: null,
+
+        sendSingle() { this.send(TEST_URL, { test_email: this.testEmail }); },
+        sendList()   { this.send(TEST_LIST_URL, { test_list_id: this.testListId }); },
+
+        send(url, payload) {
+            this.loading = true;
+            this.result = null;
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': CSRF,
+                },
+                body: JSON.stringify(payload),
+            })
+            .then(r => r.json())
+            .then(d => { this.result = d.message; this.ok = !!d.success; })
+            .catch(() => { this.result = 'Errore'; this.ok = false; })
+            .finally(() => { this.loading = false; });
+        },
+    };
+}
+
 function campaignEditor() {
     return {
         tab: 'visual',
@@ -460,6 +514,12 @@ function campaignEditor() {
             f.value = o.dataset.fromName || '';
             e.value = o.dataset.fromEmail || '';
             r.value = o.dataset.replyTo || '';
+
+            const t = document.getElementById('testListSelect');
+            if (t && o.dataset.testListId) {
+                t.value = o.dataset.testListId;
+                t.dispatchEvent(new Event('change'));
+            }
         },
 
         init() {

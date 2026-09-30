@@ -28,3 +28,10 @@
            {{ old('double_optin', $list?->double_optin) ? 'checked' : '' }}>
     <label class="form-check-label" for="double_optin">Double opt-in</label>
 </div>
+<div class="form-check mt-2">
+    <input type="hidden" name="is_test" value="0">
+    <input type="checkbox" name="is_test" value="1" class="form-check-input" id="is_test_{{ $list?->id ?? 'new' }}"
+           {{ old('is_test', $list?->is_test) ? 'checked' : '' }}>
+    <label class="form-check-label" for="is_test_{{ $list?->id ?? 'new' }}">Lista di test</label>
+    <div class="form-text">Serve solo per inviare i test delle campagne: non può essere scelta come destinataria e non accetta iscrizioni pubbliche.</div>
+</div>

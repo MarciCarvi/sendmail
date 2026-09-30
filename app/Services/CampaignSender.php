@@ -18,7 +18,7 @@ class CampaignSender
      */
     public function prepare(Campaign $campaign): void
     {
-        $listIds = $campaign->lists()->pluck('sm_lists.id');
+        $listIds = $campaign->lists()->where('sm_lists.is_test', false)->pluck('sm_lists.id');
 
         $subscribers = Subscriber::whereIn('list_id', $listIds)
             ->where('status', 'subscribed')

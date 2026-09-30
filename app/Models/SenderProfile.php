@@ -9,7 +9,12 @@ class SenderProfile extends Model
 {
     protected $table = 'sm_sender_profiles';
 
-    protected $fillable = ['name', 'from_name', 'from_email', 'reply_to', 'configuration_set'];
+    protected $fillable = ['name', 'from_name', 'from_email', 'reply_to', 'configuration_set', 'test_list_id'];
+
+    public function testList(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(MailList::class, 'test_list_id');
+    }
 
     public function campaigns(): HasMany
     {

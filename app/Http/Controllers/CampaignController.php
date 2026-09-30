@@ -14,6 +14,8 @@ use Illuminate\Http\Request;
 
 class CampaignController extends Controller
 {
+    private const MAX_TEST_RECIPIENTS = 10;
+
     public function index()
     {
         $campaigns = Campaign::with('lists')->latest()->get();
@@ -22,29 +24,31 @@ class CampaignController extends Controller
 
     public function create()
     {
-        $lists = MailList::orderBy('name')->get();
+        $lists = MailList::where('is_test', false)->orderBy('name')->get();
+        $testLists = MailList::where('is_test', true)->orderBy('name')->get();
         $defaults = [
             'from_name'  => Setting::get('default_from_name'),
             'from_email' => Setting::get('default_from_email'),
         ];
         $profiles = SenderProfile::orderBy('name')->get();
-        return view('campaigns.edit', compact('lists', 'defaults', 'profiles'));
+        return view('campaigns.edit', compact('lists', 'testLists', 'defaults', 'profiles'));
     }
 
     public function store(Request $request)
     {
         $data = $this->validateDraft($request);
         $campaign = Campaign::create($data);
-        $campaign->lists()->sync($request->input('list_ids', []));
+        $campaign->lists()->sync($this->recipientListIds($request));
         return redirect()->route('campaigns.edit', $campaign)->with('success', 'Campagna creata.');
     }
 
     public function edit(Campaign $campaign)
     {
-        $lists = MailList::orderBy('name')->get();
+        $lists = MailList::where('is_test', false)->orderBy('name')->get();
+        $testLists = MailList::where('is_test', true)->orderBy('name')->get();
         $defaults = [];
         $profiles = SenderProfile::orderBy('name')->get();
-        return view('campaigns.edit', compact('campaign', 'lists', 'defaults', 'profiles'));
+        return view('campaigns.edit', compact('campaign', 'lists', 'testLists', 'defaults', 'profiles'));
     }
 
     public function update(Request $request, Campaign $campaign)
@@ -54,7 +58,7 @@ class CampaignController extends Controller
         }
         $data = $this->validateDraft($request);
         $campaign->update($data);
-        $campaign->lists()->sync($request->input('list_ids', []));
+        $campaign->lists()->sync($this->recipientListIds($request));
         return back()->with('success', 'Campagna salvata.');
     }
 
@@ -83,70 +87,100 @@ class CampaignController extends Controller
     {
         $request->validate(['test_email' => 'required|email']);
 
-        $stub = new \App\Models\Subscriber([
+        $stub = new Subscriber([
             'first_name' => 'Test',
             'last_name'  => 'User',
             'company'    => '',
             'email'      => $request->test_email,
         ]);
-        $html = self::replaceVariables($campaign->html_content ?? '', $stub);
-        $text = self::replaceVariables($campaign->text_content ?? '', $stub);
 
         try {
-            $ses = app(SesService::class);
+            $messageId = $this->deliverTest($campaign, $stub);
 
-            // Find or create a subscriber record for the test email so we can track delivery
-            $listId = $campaign->lists()->value('sm_lists.id')
-                ?? \App\Models\MailList::value('id');
-
-            $subscriber = $listId
-                ? \App\Models\Subscriber::firstOrCreate(
-                    ['email' => strtolower($request->test_email)],
-                    [
-                        'list_id'    => $listId,
-                        'first_name' => 'Test',
-                        'status'     => 'subscribed',
-                        'token'      => \Illuminate\Support\Str::random(64),
-                    ]
-                )
-                : null;
-
-            // Create a send record so delivery tracking works
-            $send = $subscriber ? \App\Models\CampaignSend::create([
-                'campaign_id'   => $campaign->id,
-                'subscriber_id' => $subscriber->id,
-                'status'        => 'pending',
-            ]) : null;
-
-            $messageId = $ses->send(
-                to:              $request->test_email,
-                toName:          'Test',
-                subject:         '[TEST] ' . $campaign->subject,
-                html:            $html,
-                text:            $text,
-                fromEmail:       $campaign->from_email,
-                fromName:        $campaign->from_name,
-                replyTo:         $campaign->reply_to ?? $campaign->from_email,
-                campaignId:      (string) $campaign->id,
-                subscriberToken: $subscriber?->token ?? 'test',
-                configurationSet: $campaign->senderProfile?->configuration_set,
-            );
-
-            if ($send) {
-                $send->update([
-                    'status'     => $messageId ? 'sent' : 'failed',
-                    'sent_at'    => now(),
-                    'message_id' => $messageId ?: null,
-                ]);
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => "Email di test inviata a {$request->test_email}" . ($messageId ? " (message_id: {$messageId})" : ''),
-            ]);
+            return response()->json($messageId
+                ? ['success' => true,  'message' => "Email di test inviata a {$request->test_email}."]
+                : ['success' => false, 'message' => "Invio a {$request->test_email} non riuscito. Controlla credenziali SES, mittente verificato e Configuration Set."]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * Invia il test a tutti i membri di una lista di test (max 10).
+     * Non crea record in sm_campaign_sends né iscritti: i test non vengono tracciati.
+     */
+    public function sendTestToList(Request $request, Campaign $campaign)
+    {
+        $request->validate([
+            'test_list_id' => ['required', \Illuminate\Validation\Rule::exists('sm_lists', 'id')->where('is_test', 1)],
+        ]);
+
+        // Ignora lo status (chi si è disiscritto per distrazione continua a ricevere i test);
+        // esclude solo bounce/complaint per proteggere la reputazione SES e la blacklist.
+        $recipients = Subscriber::where('list_id', $request->test_list_id)
+            ->whereNotIn('status', ['bounced', 'complained'])
+            ->orderBy('email')
+            ->get()
+            ->filter(fn($s) => !\App\Models\Blacklist::isBlacklisted($s->email)
+                            && !\App\Models\Blacklist::isDomainBlocked($s->email))
+            ->values();
+
+        if ($recipients->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'La lista di test non ha destinatari validi.']);
+        }
+
+        if ($recipients->count() > self::MAX_TEST_RECIPIENTS) {
+            return response()->json(['success' => false, 'message' => 'La lista di test ha ' . $recipients->count()
+                . ' destinatari: il massimo è ' . self::MAX_TEST_RECIPIENTS . '. Riduci la lista.']);
+        }
+
+        $sent = 0;
+        $failed = [];
+        foreach ($recipients as $subscriber) {
+            try {
+                if ($this->deliverTest($campaign, $subscriber)) {
+                    $sent++;
+                } else {
+                    $failed[] = $subscriber->email;
+                }
+            } catch (\Exception) {
+                $failed[] = $subscriber->email;
+            }
+        }
+
+        $message = "Test inviato a {$sent} destinatari su {$recipients->count()}.";
+        if ($failed) {
+            $message .= ' Non riusciti: ' . implode(', ', $failed) . '.';
+        }
+
+        return response()->json(['success' => $sent > 0 && !$failed, 'message' => $message]);
+    }
+
+    /** Invia una singola email di test (senza tracking e senza righe in sm_campaign_sends). */
+    private function deliverTest(Campaign $campaign, Subscriber $subscriber): string|false
+    {
+        return app(SesService::class)->send(
+            to:               $subscriber->email,
+            toName:           trim("{$subscriber->first_name} {$subscriber->last_name}") ?: 'Test',
+            subject:          '[TEST] ' . self::replaceVariables($campaign->subject ?? '', $subscriber),
+            html:             self::replaceVariables($campaign->html_content ?? '', $subscriber),
+            text:             self::replaceVariables($campaign->text_content ?? '', $subscriber),
+            fromEmail:        $campaign->from_email,
+            fromName:         $campaign->from_name,
+            replyTo:          $campaign->reply_to ?: $campaign->from_email,
+            campaignId:       (string) $campaign->id,
+            subscriberToken:  $subscriber->token ?? 'test',
+            configurationSet: $campaign->senderProfile?->configuration_set,
+        );
+    }
+
+    /** ID delle liste destinatarie scelte, escluse le liste di test. */
+    private function recipientListIds(Request $request): array
+    {
+        return MailList::whereIn('id', (array) $request->input('list_ids', []))
+            ->where('is_test', false)
+            ->pluck('id')
+            ->all();
     }
 
     private function validateDraft(Request $request): array
@@ -256,7 +290,7 @@ class CampaignController extends Controller
         if (empty($campaign->subject))    $errors[] = 'Oggetto mancante.';
         if (empty($campaign->from_name))  $errors[] = 'Nome mittente mancante.';
         if (empty($campaign->from_email)) $errors[] = 'Email mittente mancante.';
-        if ($campaign->lists()->count() === 0) $errors[] = 'Nessuna lista destinatari selezionata.';
+        if ($campaign->lists()->where('sm_lists.is_test', false)->count() === 0) $errors[] = 'Nessuna lista destinatari selezionata.';
         return $errors;
     }
 

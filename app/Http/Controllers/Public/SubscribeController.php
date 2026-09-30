@@ -19,12 +19,17 @@ class SubscribeController extends Controller
         // create list rows. Render the form against an in-memory list; the row
         // is created only when someone actually subscribes (POST).
         $list = $this->resolveList($token, createIfMissing: false);
+        abort_if($list->is_test, 404);
         return view('public.subscribe', compact('list', 'token'));
     }
 
     public function subscribe(Request $request, string $token)
     {
         $list = $this->resolveList($token);
+
+        if ($list->is_test) {
+            return $this->respond($request, $list, 'error', 'Iscrizioni non disponibili per questa lista.');
+        }
 
         $request->validate([
             'email'      => 'required|email|max:255',

@@ -1,18 +1,36 @@
 # Changelog
 
+## [1.4.5] - 2026-09-30
+
+### Novità
+- **Liste di test**: nel form della lista c'è la nuova casella «Lista di test». Una lista di test non può essere scelta come destinataria di una campagna (ed è esclusa dall'invio anche se già associata), non accetta iscrizioni pubbliche e mostra il badge TEST. Se ne possono creare quante servono, ad esempio una per cliente.
+- **Invio test alla lista**: nella campagna il nuovo menu «Lista di test» con il pulsante «Invia test alla lista» invia l'email di test a tutti i membri (massimo 10). Ignora lo status di iscrizione (chi si è disiscritto per distrazione riceve ancora i test) ed esclude solo bounce, complaint e blacklist. Il campo «Email di test» singola resta disponibile.
+- **Lista di test predefinita nel profilo di invio**: scegliendo il profilo nella campagna, il menu della lista di test si preseleziona.
+- **Liste destinatarie con caselle di spunta** al posto della selezione multipla con Ctrl/⌘, con i comandi «Tutte» / «Nessuna».
+
+### Modifiche
+- I test non creano più righe in `sm_campaign_sends` e non aggiungono più l'indirizzo di test come iscritto della prima lista (prima poteva ricevere anche la campagna vera). I test restano senza tracking.
+- Il messaggio dell'invio test singolo ora segnala correttamente l'errore quando SES rifiuta l'invio.
+
+### Correzioni
+- Il link di disiscrizione non viene più riscritto dal click tracking: chi clicca «disiscriviti» non conta più come click.
+
 ## [1.4.4] - 2026-09-29
 
 ### Correzioni
+
 - **Delivery/Bounce/Complaint con Configuration Set**: il webhook SES leggeva solo `notificationType` (notifiche di identità), mentre gli eventi dei Configuration Set usano `eventType`. Risultato: `delivered_at` non veniva mai valorizzato e bounce/complaint non venivano registrati. Ora sono supportati entrambi i formati.
 
 ## [1.4.3] - 2026-09-29
 
 ### Correzioni
+
 - **Salvataggio bozza senza oggetto**: salvare una campagna con oggetto, nome o email mittente vuoti dava `Column 'subject' cannot be null` (errore 500). Ora le bozze incomplete si salvano; l'invio resta bloccato finché i campi obbligatori non sono compilati.
 
 ## [1.4.2] - 2026-09-29
 
 ### Correzioni
+
 - **Updater**: dopo l'aggiornamento ora svuota anche la cache delle rotte (`route:clear` + eliminazione di `bootstrap/cache/routes-*.php`) e resetta OPcache. Prima le nuove rotte non venivano riconosciute (es. `Route [sender-profiles.index] not defined` dopo l'aggiornamento a 1.4.1).
 
 ## [1.4.1] - 2026-09-29

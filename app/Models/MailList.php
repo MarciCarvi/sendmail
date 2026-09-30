@@ -10,7 +10,9 @@ class MailList extends Model
 {
     protected $table = 'sm_lists';
 
-    protected $fillable = ['name', 'from_name', 'from_email', 'reply_to', 'double_optin', 'api_token'];
+    protected $fillable = ['name', 'from_name', 'from_email', 'reply_to', 'double_optin', 'is_test', 'api_token'];
+
+    protected $casts = ['is_test' => 'boolean'];
 
     protected static function booted(): void
     {

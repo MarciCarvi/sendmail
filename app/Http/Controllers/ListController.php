@@ -25,7 +25,7 @@ class ListController extends Controller
             'reply_to'   => 'nullable|email',
         ]);
 
-        MailList::create($request->only('name', 'from_name', 'from_email', 'reply_to', 'double_optin'));
+        MailList::create($request->only('name', 'from_name', 'from_email', 'reply_to', 'double_optin', 'is_test'));
 
         return redirect()->route('lists.index')->with('success', 'Lista creata.');
     }
@@ -39,7 +39,7 @@ class ListController extends Controller
             'reply_to'   => 'nullable|email',
         ]);
 
-        $list->update($request->only('name', 'from_name', 'from_email', 'reply_to', 'double_optin'));
+        $list->update($request->only('name', 'from_name', 'from_email', 'reply_to', 'double_optin', 'is_test'));
 
         return redirect()->route('lists.index')->with('success', 'Lista aggiornata.');
     }

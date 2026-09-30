@@ -33,6 +33,9 @@
                                     <a href="{{ route('lists.subscribers.index', $list) }}" class="fw-semibold text-decoration-none">
                                         {{ $list->name }}
                                     </a>
+                                    @if($list->is_test)
+                                        <span class="badge bg-warning text-dark ms-1">TEST</span>
+                                    @endif
                                 </td>
                                 <td>
                                     <div>{{ $list->from_name }}</div>
@@ -47,11 +50,13 @@
                                     @endif
                                 </td>
                                 <td class="text-end">
+                                    @unless($list->is_test)
                                     <button class="btn btn-sm btn-outline-primary"
                                             data-bs-toggle="modal"
                                             data-bs-target="#modalForm{{ $list->id }}">
                                         Form
                                     </button>
+                                    @endunless
                                     <button class="btn btn-sm btn-outline-secondary"
                                             data-bs-toggle="modal"
                                             data-bs-target="#modalEditList{{ $list->id }}">

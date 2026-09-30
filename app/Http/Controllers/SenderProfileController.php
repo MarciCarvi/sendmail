@@ -2,15 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MailList;
 use App\Models\SenderProfile;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 
 class SenderProfileController extends Controller
 {
     public function index()
     {
-        $profiles = SenderProfile::withCount('campaigns')->orderBy('name')->get();
-        return view('sender-profiles.index', compact('profiles'));
+        $profiles = SenderProfile::withCount('campaigns')->with('testList')->orderBy('name')->get();
+        $testLists = MailList::where('is_test', true)->orderBy('name')->get();
+        return view('sender-profiles.index', compact('profiles', 'testLists'));
     }
 
     public function store(Request $request)
@@ -39,7 +42,9 @@ class SenderProfileController extends Controller
             'from_email'        => 'required|email',
             'reply_to'          => 'nullable|email',
             'configuration_set' => 'nullable|string|max:100',
+            'test_list_id'      => ['nullable', Rule::exists('sm_lists', 'id')->where('is_test', 1)],
         ]);
+        $data['test_list_id'] = $data['test_list_id'] ?? null;
         $data['configuration_set'] = $data['configuration_set'] ?: null;
         $data['reply_to'] = $data['reply_to'] ?: null;
         return $data;

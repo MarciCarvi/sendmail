@@ -20,8 +20,9 @@ class TrackingService
             '/(<a\s[^>]*href=")([^"]+)(")/i',
             function ($matches) use ($campaignId, $token) {
                 $url = $matches[2];
-                // Non tracciare link già tracciati o mailto
-                if (str_starts_with($url, 'mailto:') || str_contains($url, '/t/c/')) {
+                // Non tracciare link già tracciati, mailto e disiscrizione
+                // (un click su "disiscriviti" non è un click di interesse)
+                if (str_starts_with($url, 'mailto:') || str_contains($url, '/t/c/') || str_contains($url, '/u/')) {
                     return $matches[0];
                 }
                 $tracked = url("/t/c/{$campaignId}/{$token}?url=" . base64_encode($url));

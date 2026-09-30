@@ -509,7 +509,7 @@ function install_sql(string $p): array
           `id` bigint unsigned NOT NULL AUTO_INCREMENT, `api_token` varchar(64) DEFAULT NULL,
           `name` varchar(255) NOT NULL, `from_name` varchar(255) NOT NULL,
           `from_email` varchar(255) NOT NULL, `reply_to` varchar(255) DEFAULT NULL,
-          `double_optin` tinyint(1) NOT NULL DEFAULT '0',
+          `double_optin` tinyint(1) NOT NULL DEFAULT '0', `is_test` tinyint(1) NOT NULL DEFAULT '0',
           `created_at` timestamp NULL DEFAULT NULL, `updated_at` timestamp NULL DEFAULT NULL,
           PRIMARY KEY (`id`), UNIQUE KEY `{$p}lists_api_token_unique` (`api_token`)
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
@@ -529,8 +529,11 @@ function install_sql(string $p): array
           `id` bigint unsigned NOT NULL AUTO_INCREMENT, `name` varchar(100) NOT NULL,
           `from_name` varchar(100) NOT NULL, `from_email` varchar(255) NOT NULL,
           `reply_to` varchar(255) DEFAULT NULL, `configuration_set` varchar(100) DEFAULT NULL,
+          `test_list_id` bigint unsigned DEFAULT NULL,
           `created_at` timestamp NULL DEFAULT NULL, `updated_at` timestamp NULL DEFAULT NULL,
-          PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
+          PRIMARY KEY (`id`),
+          CONSTRAINT `{$p}sender_profiles_test_list_id_foreign` FOREIGN KEY (`test_list_id`) REFERENCES `{$p}lists` (`id`) ON DELETE SET NULL
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
         ["{$p}campaigns", "CREATE TABLE IF NOT EXISTS `{$p}campaigns` (
           `id` bigint unsigned NOT NULL AUTO_INCREMENT, `subject` varchar(255) NOT NULL,
           `from_name` varchar(255) NOT NULL, `from_email` varchar(255) NOT NULL,
@@ -617,6 +620,7 @@ function install_migrations(): array
         '2026_06_15_104849_add_delivery_fields_to_sm_campaign_sends',
         '2026_06_15_110336_add_api_token_to_sm_lists',
         '2026_06_20_090000_create_sm_sender_profiles_table',
+        '2026_09_30_090000_add_test_list_fields',
     ];
 }
 
