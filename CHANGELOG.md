@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.4.6] - 2026-09-30
+
+### Novità
+- **Editor «HTML puro»**: da *Campagne → + Nuova campagna* (freccia accanto al pulsante) si può scegliere tra *Editor a blocchi* e *HTML puro*. In HTML puro Unlayer non viene caricato: c'è un editor di codice (CodeMirror, con evidenziazione della sintassi e numeri di riga) con anteprima dal vivo a fianco, desktop e mobile. L'HTML viene salvato esattamente come scritto, senza nessuna rielaborazione. Restano disponibili «Testo semplice» e «Immagini».
+- La modalità si sceglie alla creazione e non cambia più (Unlayer non può importare HTML arbitrario). Le campagne esistenti restano a blocchi.
+- All'invio restano solo le elaborazioni necessarie: variabili (`{{first_name}}`…), riscrittura dei link per il tracking dei click e pixel di apertura prima di `</body>`.
+
+### Correzioni
+- **Changelog mai aggiornato dopo l'aggiornamento web**: `CHANGELOG.md` era escluso dall'archivio di release (`export-ignore` in `.gitattributes`), quindi l'updater non lo scaricava e la finestra «Novità» mostrava sempre il file vecchio. Ora viene incluso.
+- Nelle campagne a blocchi la scheda «HTML» ora è in sola lettura: prima, modificarla a mano non serviva a nulla perché al salvataggio veniva sovrascritta con l'output di Unlayer.
+
 ## [1.4.5] - 2026-09-30
 
 ### Novità

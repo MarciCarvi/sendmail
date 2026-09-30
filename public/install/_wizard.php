@@ -538,6 +538,7 @@ function install_sql(string $p): array
           `id` bigint unsigned NOT NULL AUTO_INCREMENT, `subject` varchar(255) NOT NULL,
           `from_name` varchar(255) NOT NULL, `from_email` varchar(255) NOT NULL,
           `reply_to` varchar(255) DEFAULT NULL, `sender_profile_id` bigint unsigned DEFAULT NULL,
+          `editor_mode` varchar(10) NOT NULL DEFAULT 'visual',
           `html_content` longtext, `design_json` longtext,
           `text_content` text,
           `status` enum('draft','scheduled','sending','sent','paused') NOT NULL DEFAULT 'draft',
@@ -621,6 +622,7 @@ function install_migrations(): array
         '2026_06_15_110336_add_api_token_to_sm_lists',
         '2026_06_20_090000_create_sm_sender_profiles_table',
         '2026_09_30_090000_add_test_list_fields',
+        '2026_09_30_100000_add_editor_mode_to_sm_campaigns',
     ];
 }
 

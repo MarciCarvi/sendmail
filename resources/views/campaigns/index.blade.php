@@ -1,7 +1,17 @@
 <x-app-layout>
     <x-slot name="title">Campagne</x-slot>
     <x-slot name="actions">
-        <a href="{{ route('campaigns.create') }}" class="btn btn-primary btn-sm">+ Nuova campagna</a>
+        <div class="btn-group">
+            <a href="{{ route('campaigns.create') }}" class="btn btn-primary btn-sm">+ Nuova campagna</a>
+            <button type="button" class="btn btn-primary btn-sm dropdown-toggle dropdown-toggle-split"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="visually-hidden">Scegli l'editor</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="{{ route('campaigns.create') }}">Editor a blocchi</a></li>
+                <li><a class="dropdown-item" href="{{ route('campaigns.create', ['mode' => 'html']) }}">HTML puro</a></li>
+            </ul>
+        </div>
     </x-slot>
 
     @if($campaigns->isEmpty())

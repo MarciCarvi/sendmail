@@ -6,11 +6,15 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ isset($campaign) ? 'Modifica campagna' : 'Nuova campagna' }} — {{ config('app.name') }}</title>
     @vite(['resources/scss/app.scss', 'resources/js/app.js'])
+    @if($editorMode === 'html')
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    @endif
     <style>
         [x-cloak] { display: none !important; }
         body { background: #f8f9fa; }
         #unlayer-editor { height: calc(100vh - 220px); min-height: 500px; }
         .sidebar-fixed { width: 240px; flex-shrink: 0; }
+        .CodeMirror { height: 100%; font-size: 12.5px; }
     </style>
 </head>
 <body>
@@ -21,6 +25,9 @@
     <span class="text-white fw-semibold">
         {{ isset($campaign) ? $campaign->subject : 'Nuova campagna' }}
     </span>
+    @if($editorMode === 'html')
+        <span class="badge bg-secondary ms-2">HTML puro</span>
+    @endif
     @if(isset($campaign) && !$campaign->isDraft())
         <span class="badge bg-success ms-2">{{ ucfirst($campaign->status) }}</span>
     @endif
@@ -63,6 +70,7 @@
 
             {{-- Campi nascosti compilati da Alpine --}}
             <input type="hidden" name="html_content" x-model="htmlContent">
+            <input type="hidden" name="editor_mode" value="{{ $editorMode }}">
             <input type="hidden" name="design_json" x-model="designJson">
             <input type="hidden" name="text_content" x-model="textContent">
 
@@ -279,51 +287,90 @@
 
         {{-- Tab bar --}}
         <div class="bg-white border-bottom px-3 d-flex align-items-center gap-1 py-2">
+            @if($editorMode === 'visual')
             <button type="button" class="btn btn-sm"
                     :class="tab === 'visual' ? 'btn-primary' : 'btn-outline-secondary'"
                     @click="switchTab('visual')">
                 Visual
             </button>
+            @endif
             <button type="button" class="btn btn-sm"
                     :class="tab === 'html' ? 'btn-primary' : 'btn-outline-secondary'"
                     @click="switchTab('html')">
-                HTML
+                {{ $editorMode === 'html' ? 'HTML' : 'HTML (sola lettura)' }}
             </button>
             <button type="button" class="btn btn-sm"
                     :class="tab === 'text' ? 'btn-primary' : 'btn-outline-secondary'"
                     @click="tab = 'text'">
                 Testo semplice
             </button>
+            @if($editorMode === 'visual')
             <button type="button" class="btn btn-sm"
                     :class="tab === 'preview' ? 'btn-primary' : 'btn-outline-secondary'"
                     @click="switchTab('preview')">
                 Anteprima
             </button>
+            @endif
             <button type="button" class="btn btn-sm"
                     :class="tab === 'immagini' ? 'btn-primary' : 'btn-outline-secondary'"
                     @click="switchTab('immagini')">
                 Immagini
             </button>
+            @if($editorMode === 'visual')
             <button type="button" class="btn btn-sm"
                     :class="tab === 'templates' ? 'btn-primary' : 'btn-outline-secondary'"
                     @click="switchTab('templates')">
                 Template
             </button>
+            @endif
             <span class="ms-auto text-muted small">Variabili: <code>@{{first_name}}</code> <code>@{{last_name}}</code> <code>@{{full_name}}</code> <code>@{{company}}</code> <code>@{{email}}</code> <code>@{{unsubscribe_url}}</code></span>
         </div>
 
+        @if($editorMode === 'visual')
         {{-- Tab: Unlayer visual editor --}}
         <div x-show="tab === 'visual'" class="flex-grow-1">
             <div id="unlayer-editor"></div>
         </div>
+        @endif
 
-        {{-- Tab: HTML grezzo --}}
-        <div x-show="tab === 'html'" class="flex-grow-1 p-3">
-            <textarea class="form-control font-monospace h-100"
-                      style="resize: none; font-size: 12px;"
-                      x-model="htmlContent"
-                      placeholder="Incolla o scrivi il codice HTML qui..."></textarea>
+        {{-- Tab: HTML --}}
+        @if($editorMode === 'html')
+        {{-- HTML puro: editor di codice + anteprima dal vivo. Il codice viene salvato così com'è. --}}
+        <div x-show="tab === 'html'" class="flex-grow-1 overflow-hidden" style="min-height:0"
+             :class="tab === 'html' ? 'd-flex' : ''">
+            <div class="position-relative border-end" style="width:50%;min-width:0">
+                <div class="position-absolute top-0 bottom-0 start-0 end-0">
+                    <textarea id="htmlCode">{{ $campaign->html_content ?? '' }}</textarea>
+                </div>
+            </div>
+            <div class="d-flex flex-column bg-light" style="width:50%;min-width:0">
+                <div class="border-bottom px-3 py-2 d-flex gap-2 align-items-center bg-white">
+                    <span class="small text-muted">Anteprima con dati di esempio</span>
+                    <div class="ms-auto d-flex gap-1">
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                :class="previewDevice === 'desktop' ? 'active' : ''"
+                                @click="previewDevice = 'desktop'">Desktop</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                :class="previewDevice === 'mobile' ? 'active' : ''"
+                                @click="previewDevice = 'mobile'">Mobile</button>
+                    </div>
+                </div>
+                <div class="flex-grow-1 d-flex justify-content-center p-3 overflow-auto">
+                    <iframe id="htmlPreviewFrame" sandbox
+                            :style="previewDevice === 'mobile' ? 'width:375px;' : 'width:100%;'"
+                            style="border: 1px solid #dee2e6; background: white; height: 100%;"
+                            class="shadow-sm"></iframe>
+                </div>
+            </div>
         </div>
+        @else
+        {{-- Modalità a blocchi: l'HTML è generato da Unlayer, quindi qui è solo da consultare/copiare --}}
+        <div x-show="tab === 'html'" class="flex-grow-1 p-3">
+            <textarea class="form-control font-monospace h-100" readonly
+                      style="resize: none; font-size: 12px;"
+                      x-model="htmlContent"></textarea>
+        </div>
+        @endif
 
         {{-- Tab: testo semplice --}}
         <div x-show="tab === 'text'" class="flex-grow-1 p-3">
@@ -333,6 +380,7 @@
                       placeholder="Versione testo semplice dell'email (per client che non supportano HTML)..."></textarea>
         </div>
 
+        @if($editorMode === 'visual')
         {{-- Tab: anteprima --}}
         <div x-show="tab === 'preview'" x-cloak class="flex-grow-1 flex-column"
              :class="tab === 'preview' ? 'd-flex' : ''">
@@ -354,6 +402,8 @@
                         class="shadow-sm"></iframe>
             </div>
         </div>
+
+        @endif
 
         {{-- Tab: immagini --}}
         <div x-show="tab === 'immagini'" x-cloak class="flex-grow-1 flex-column overflow-hidden"
@@ -396,6 +446,7 @@
             </div>
         </div>
 
+        @if($editorMode === 'visual')
         {{-- Tab: template --}}
         <div x-show="tab === 'templates'" x-cloak class="flex-grow-1 flex-column overflow-hidden"
              :class="tab === 'templates' ? 'd-flex' : ''">
@@ -426,6 +477,7 @@
                 </div>
             </div>
         </div>
+        @endif
 
     </div>
 
@@ -447,8 +499,18 @@
     </div>
 </div>
 
+@if($editorMode === 'html')
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+@else
 <script src="https://editor.unlayer.com/embed.js"></script>
+@endif
 <script>
+const EDITOR_MODE = @json($editorMode);
+let   cmInstance  = null; // CodeMirror (fuori da Alpine per evitare il proxy reattivo)
 const CSRF        = document.querySelector('meta[name=csrf-token]').content;
 const BLOCKS_URL  = '{{ route('unlayer.blocks') }}';
 const IMAGES_URL  = '{{ route('upload.images') }}';
@@ -490,7 +552,7 @@ function testSender(defaultListId) {
 
 function campaignEditor() {
     return {
-        tab: 'visual',
+        tab: EDITOR_MODE === 'html' ? 'html' : 'visual',
         previewDevice: 'desktop',
         htmlContent: @json($campaign->html_content ?? ''),
         designJson:  @json($campaign->design_json ?? null),
@@ -522,7 +584,36 @@ function campaignEditor() {
             }
         },
 
+        initHtmlEditor() {
+            this.$nextTick(() => {
+                cmInstance = CodeMirror.fromTextArea(document.getElementById('htmlCode'), {
+                    mode: 'htmlmixed',
+                    lineNumbers: true,
+                    lineWrapping: true,
+                    indentUnit: 2,
+                    tabSize: 2,
+                    readOnly: @json(isset($campaign) && !$campaign->isDraft()),
+                    extraKeys: {
+                        Tab: (cm) => cm.somethingSelected() ? cm.indentSelected('add') : cm.replaceSelection('  ', 'end'),
+                        'Shift-Tab': (cm) => cm.indentSelected('subtract'),
+                    },
+                });
+                cmInstance.on('change', () => {
+                    this.htmlContent = cmInstance.getValue();
+                    clearTimeout(this._previewTimer);
+                    this._previewTimer = setTimeout(() => this.updatePreview('htmlPreviewFrame'), 300);
+                });
+                this.updatePreview('htmlPreviewFrame');
+                this.unlayerReady = false;
+            });
+        },
+
         init() {
+            if (EDITOR_MODE === 'html') {
+                this.initHtmlEditor();
+                return;
+            }
+
             unlayer.init({
                 id: 'unlayer-editor',
                 displayMode: 'email',
@@ -581,6 +672,9 @@ function campaignEditor() {
 
         switchTab(newTab) {
             this.tab = newTab;
+            if (newTab === 'html' && cmInstance) {
+                this.$nextTick(() => { cmInstance.refresh(); this.updatePreview('htmlPreviewFrame'); });
+            }
             if (newTab === 'preview') {
                 this.$nextTick(() => this.updatePreview());
             }
@@ -592,8 +686,9 @@ function campaignEditor() {
             }
         },
 
-        updatePreview() {
-            const frame = document.getElementById('previewFrame');
+        updatePreview(frameId = 'previewFrame') {
+            const frame = document.getElementById(frameId);
+            if (!frame) return;
             const vars = {
                 'first_name':      'Mario',
                 'last_name':       'Rossi',

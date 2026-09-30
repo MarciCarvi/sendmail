@@ -22,8 +22,9 @@ class CampaignController extends Controller
         return view('campaigns.index', compact('campaigns'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
+        $editorMode = $request->query('mode') === 'html' ? 'html' : 'visual';
         $lists = MailList::where('is_test', false)->orderBy('name')->get();
         $testLists = MailList::where('is_test', true)->orderBy('name')->get();
         $defaults = [
@@ -31,7 +32,7 @@ class CampaignController extends Controller
             'from_email' => Setting::get('default_from_email'),
         ];
         $profiles = SenderProfile::orderBy('name')->get();
-        return view('campaigns.edit', compact('lists', 'testLists', 'defaults', 'profiles'));
+        return view('campaigns.edit', compact('lists', 'testLists', 'defaults', 'profiles', 'editorMode'));
     }
 
     public function store(Request $request)
@@ -44,11 +45,12 @@ class CampaignController extends Controller
 
     public function edit(Campaign $campaign)
     {
+        $editorMode = $campaign->editor_mode ?: 'visual';
         $lists = MailList::where('is_test', false)->orderBy('name')->get();
         $testLists = MailList::where('is_test', true)->orderBy('name')->get();
         $defaults = [];
         $profiles = SenderProfile::orderBy('name')->get();
-        return view('campaigns.edit', compact('campaign', 'lists', 'testLists', 'defaults', 'profiles'));
+        return view('campaigns.edit', compact('campaign', 'lists', 'testLists', 'defaults', 'profiles', 'editorMode'));
     }
 
     public function update(Request $request, Campaign $campaign)
@@ -57,6 +59,7 @@ class CampaignController extends Controller
             return back()->with('error', 'Solo le campagne in bozza possono essere modificate.');
         }
         $data = $this->validateDraft($request);
+        unset($data['editor_mode']); // la modalità si sceglie alla creazione e non cambia più
         $campaign->update($data);
         $campaign->lists()->sync($this->recipientListIds($request));
         return back()->with('success', 'Campagna salvata.');
@@ -191,6 +194,7 @@ class CampaignController extends Controller
             'from_email'   => 'nullable|email',
             'reply_to'     => 'nullable|email',
             'sender_profile_id' => 'nullable|exists:sm_sender_profiles,id',
+            'editor_mode'  => 'nullable|in:visual,html',
             'html_content' => 'nullable|string',
             'design_json'  => 'nullable|string',
             'text_content' => 'nullable|string',
@@ -201,6 +205,7 @@ class CampaignController extends Controller
         foreach (['subject', 'from_name', 'from_email'] as $field) {
             $data[$field] = $data[$field] ?? '';
         }
+        $data['editor_mode'] = $data['editor_mode'] ?? 'visual';
 
         return $data;
     }

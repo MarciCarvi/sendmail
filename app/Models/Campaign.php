@@ -10,7 +10,7 @@ class Campaign extends Model
     protected $table = 'sm_campaigns';
 
     protected $fillable = [
-        'subject', 'from_name', 'from_email', 'reply_to', 'sender_profile_id',
+        'subject', 'from_name', 'from_email', 'reply_to', 'sender_profile_id', 'editor_mode',
         'html_content', 'design_json', 'text_content', 'status', 'scheduled_at', 'sent_at', 'total_recipients',
     ];
 
