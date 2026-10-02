@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
 use App\Models\Subscriber;
+use App\Models\Unsubscribe;
 
 class ConfirmController extends Controller
 {
@@ -26,6 +27,9 @@ class ConfirmController extends Controller
             'status'        => 'subscribed',
             'subscribed_at' => now(),
         ]);
+
+        // Nuova iscrizione volontaria: non è più disiscritto per questo cliente
+        Unsubscribe::clear($subscriber);
 
         return view('public.confirmed', compact('subscriber'));
     }

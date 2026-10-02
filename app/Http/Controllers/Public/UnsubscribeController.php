@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
 use App\Models\Subscriber;
+use App\Models\Unsubscribe;
 
 class UnsubscribeController extends Controller
 {
@@ -42,6 +43,9 @@ class UnsubscribeController extends Controller
                 'unsubscribed_at'  => now(),
             ]);
         }
+
+        // Vale per il cliente (dominio del mittente della lista), non solo per questa lista
+        Unsubscribe::record($subscriber);
 
         return view('public.unsubscribed', compact('subscriber'));
     }

@@ -10,6 +10,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SubscriberController;
 use App\Http\Controllers\ImageUploadController;
 use App\Http\Controllers\UnlayerController;
+use App\Http\Controllers\UnsubscribeListController;
 use App\Http\Controllers\UpdateController;
 use Illuminate\Support\Facades\Route;
 
@@ -64,6 +65,10 @@ Route::middleware(['auth', 'verified', 'check.license'])->group(function () {
     Route::post('/unlayer/blocks', [UnlayerController::class, 'saveBlock'])->name('unlayer.blocks.save');
     Route::put('/unlayer/blocks/{id}', [UnlayerController::class, 'updateBlock'])->name('unlayer.blocks.update');
     Route::delete('/unlayer/blocks/{id}', [UnlayerController::class, 'deleteBlock'])->name('unlayer.blocks.delete');
+
+    // Disiscritti per cliente
+    Route::get('/unsubscribes', [UnsubscribeListController::class, 'index'])->name('unsubscribes.index');
+    Route::delete('/unsubscribes/{unsubscribe}', [UnsubscribeListController::class, 'destroy'])->name('unsubscribes.destroy');
 
     // Blacklist
     Route::get('/blacklist', [BlacklistController::class, 'index'])->name('blacklist.index');

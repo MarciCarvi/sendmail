@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Blacklist;
 use App\Models\MailList;
 use App\Models\Subscriber;
+use App\Models\Unsubscribe;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -55,6 +56,10 @@ class SubscriberController extends Controller
             return back()->with('error', 'Dominio bloccato. Non può essere aggiunto.');
         }
 
+        if (isset(Unsubscribe::suppressedFor($list->from_email)[strtolower($request->email)])) {
+            return back()->with('error', 'Questa email si è disiscritta per questo cliente. Rimuovila dall\'elenco Disiscritti per poterla aggiungere.');
+        }
+
         $existing = $list->subscribers()->where('email', $request->email)->first();
 
         if ($existing) {
@@ -76,7 +81,19 @@ class SubscriberController extends Controller
             'status'     => 'required|in:subscribed,unsubscribed,bounced,complained',
         ]);
 
-        $subscriber->update($request->only('email', 'first_name', 'last_name', 'company', 'status'));
+        $previousStatus = $subscriber->status;
+        $data = $request->only('email', 'first_name', 'last_name', 'company', 'status');
+        if ($data['status'] === 'unsubscribed' && $previousStatus !== 'unsubscribed') {
+            $data['unsubscribed_at'] = now();
+        }
+
+        $subscriber->update($data);
+
+        if ($subscriber->status === 'unsubscribed') {
+            Unsubscribe::record($subscriber);
+        } elseif ($previousStatus === 'unsubscribed' && $subscriber->status === 'subscribed') {
+            Unsubscribe::clear($subscriber);
+        }
 
         return back()->with('success', 'Iscritto aggiornato.');
     }
@@ -125,6 +142,7 @@ class SubscriberController extends Controller
         $hasHeader = in_array('email', $header);
 
         $imported = 0;
+        $unsubscribedForClient = Unsubscribe::suppressedFor($list->from_email);
         $skippedRows = [];   // [riga, email, motivo] per il log temporaneo
         $seen = [];
 
@@ -158,6 +176,8 @@ class SubscriberController extends Controller
                 $reason = 'In blacklist';
             } elseif (Blacklist::isDomainBlocked($email)) {
                 $reason = 'Dominio bloccato';
+            } elseif (isset($unsubscribedForClient[strtolower($email)])) {
+                $reason = 'Disiscritto per questo cliente';
             } elseif (isset($seen[strtolower($email)])) {
                 $reason = 'Duplicata nel file';
             } elseif ($list->subscribers()->where('email', $email)->exists()) {
@@ -289,10 +309,14 @@ class SubscriberController extends Controller
 
         $query = $list->subscribers()->whereIn('id', $request->ids);
         $count = $query->count();
+        $statusSubscribers = $request->action === 'status' ? (clone $query)->get() : collect();
 
         match ($request->action) {
             'delete' => $query->delete(),
-            'status' => $query->update(['status' => $request->new_status]),
+            'status' => $query->update(array_filter([
+                'status'          => $request->new_status,
+                'unsubscribed_at' => $request->new_status === 'unsubscribed' ? now() : null,
+            ])),
             'domain' => $query->each(function (Subscriber $sub) use ($request) {
                 $oldDomain = ltrim(trim($request->old_domain), '@');
                 $newDomain = ltrim(trim($request->new_domain), '@');
@@ -311,6 +335,15 @@ class SubscriberController extends Controller
                 );
             }),
         };
+
+        foreach ($statusSubscribers as $sub) {
+            $sub->refresh();
+            if ($request->new_status === 'unsubscribed') {
+                Unsubscribe::record($sub);
+            } elseif ($request->new_status === 'subscribed') {
+                Unsubscribe::clear($sub);
+            }
+        }
 
         $label = match ($request->action) {
             'delete'     => "{$count} iscritti eliminati.",

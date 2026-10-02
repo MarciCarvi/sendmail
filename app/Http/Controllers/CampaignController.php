@@ -295,6 +295,7 @@ class CampaignController extends Controller
         if (empty($campaign->subject))    $errors[] = 'Oggetto mancante.';
         if (empty($campaign->from_name))  $errors[] = 'Nome mittente mancante.';
         if (empty($campaign->from_email)) $errors[] = 'Email mittente mancante.';
+        if (empty($campaign->sender_profile_id)) $errors[] = 'Profilo di invio mancante.';
         if ($campaign->lists()->where('sm_lists.is_test', false)->count() === 0) $errors[] = 'Nessuna lista destinatari selezionata.';
         return $errors;
     }

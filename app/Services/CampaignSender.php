@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Http\Controllers\CampaignController;
 use App\Models\Blacklist;
+use App\Models\Unsubscribe;
 use App\Models\Campaign;
 use App\Models\CampaignSend;
 use App\Models\Setting;
@@ -20,10 +21,14 @@ class CampaignSender
     {
         $listIds = $campaign->lists()->where('sm_lists.is_test', false)->pluck('sm_lists.id');
 
+        // Disiscritti per il cliente (dominio del mittente della campagna)
+        $unsubscribed = Unsubscribe::suppressedFor($campaign->from_email);
+
         $subscribers = Subscriber::whereIn('list_id', $listIds)
             ->where('status', 'subscribed')
             ->get()
             ->filter(fn($s) => !Blacklist::isBlacklisted($s->email) && !Blacklist::isDomainBlocked($s->email))
+            ->reject(fn($s) => isset($unsubscribed[strtolower($s->email)]))
             ->unique('email')
             ->values();
 

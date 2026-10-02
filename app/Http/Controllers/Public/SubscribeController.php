@@ -7,6 +7,7 @@ use App\Models\Blacklist;
 use App\Models\MailList;
 use App\Models\Setting;
 use App\Models\Subscriber;
+use App\Models\Unsubscribe;
 use App\Services\SesService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -72,6 +73,12 @@ class SubscribeController extends Controller
                 'company'    => $request->company    ?? '',
                 'status'     => $list->double_optin ? 'unconfirmed' : 'subscribed',
             ]);
+        }
+
+        // Nuova iscrizione volontaria: non è più disiscritto per questo cliente
+        // (con il double opt-in succede alla conferma)
+        if (!$list->double_optin) {
+            Unsubscribe::clear($subscriber);
         }
 
         if ($list->double_optin) {

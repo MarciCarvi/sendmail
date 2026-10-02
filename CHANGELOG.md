@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.5.0] - 2026-10-02
+
+### Novità
+- **Disiscrizione per cliente**: chi si disiscrive da una lista viene registrato nella nuova tabella dei disiscritti, associato al **dominio dell'email mittente della lista** (che coincide con quello del profilo di invio). Da quel momento non riceve più campagne con un mittente di quel dominio, indipendentemente dalla lista usata, ma può continuare a ricevere quelle di altri clienti. La blacklist resta per i blocchi validi per tutti.
+- **Nuova pagina «Disiscritti»** (menu): elenco con email, cliente (dominio e nome del profilo), lista di origine e data; ricerca, filtro per cliente e azione «Riabilita», che toglie l'indirizzo dall'elenco e rimette «iscritto» le sue righe disiscritte per quel cliente.
+- Una nuova iscrizione volontaria (form pubblico o conferma double opt-in) toglie l'indirizzo dai disiscritti del cliente.
+- Anche la disiscrizione manuale dall'elenco iscritti (singola o di gruppo) viene registrata; il ritorno a «iscritto» la rimuove.
+- L'import e l'aggiunta manuale rispettano i disiscritti del cliente: nel log dei saltati compare il motivo «Disiscritto per questo cliente».
+- **Profilo di invio obbligatorio** per inviare o programmare una campagna (le bozze si salvano anche senza).
+
+### Note
+- Vale per le disiscrizioni da questa versione in poi: non vengono recuperate quelle precedenti.
+- Come prima, chi si disiscrive mentre una campagna è già in invio può ricevere le email rimaste in coda.
+
 ## [1.4.9] - 2026-10-02
 
 ### Correzioni

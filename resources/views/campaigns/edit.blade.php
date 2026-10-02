@@ -109,10 +109,10 @@
             </div>
 
             <div class="mb-3">
-                <label class="form-label fw-semibold small">Profilo di invio</label>
+                <label class="form-label fw-semibold small">Profilo di invio <span class="text-danger" title="Obbligatorio per l'invio">*</span></label>
                 <select name="sender_profile_id" class="form-select form-select-sm" @change="applyProfile($event.target)"
                         @if(isset($campaign) && !$campaign->isDraft()) disabled @endif>
-                    <option value="">— Nessuno (impostazioni globali) —</option>
+                    <option value="">— Scegli un profilo —</option>
                     @foreach($profiles as $p)
                         <option value="{{ $p->id }}"
                                 data-from-name="{{ $p->from_name }}"

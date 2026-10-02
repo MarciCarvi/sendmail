@@ -61,6 +61,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('unsubscribes.index') }}"
+                        class="nav-link {{ request()->routeIs('unsubscribes.*') ? 'active' : '' }}">
+                        Disiscritti
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('blacklist.index') }}"
                         class="nav-link {{ request()->routeIs('blacklist.*') ? 'active' : '' }}">
                         Blacklist

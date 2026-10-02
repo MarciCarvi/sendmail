@@ -593,6 +593,14 @@ function install_sql(string $p): array
           `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY (`id`), UNIQUE KEY `{$p}blacklist_email_unique` (`email`)
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
+        ["{$p}unsubscribes", "CREATE TABLE IF NOT EXISTS `{$p}unsubscribes` (
+          `id` bigint unsigned NOT NULL AUTO_INCREMENT, `email` varchar(255) NOT NULL,
+          `sender_domain` varchar(191) NOT NULL, `sender_email` varchar(255) NOT NULL,
+          `list_id` bigint unsigned DEFAULT NULL, `unsubscribed_at` timestamp NULL DEFAULT NULL,
+          `created_at` timestamp NULL DEFAULT NULL, `updated_at` timestamp NULL DEFAULT NULL,
+          PRIMARY KEY (`id`), UNIQUE KEY `{$p}unsubscribes_sender_domain_email_unique` (`sender_domain`,`email`),
+          CONSTRAINT `{$p}unsubscribes_list_id_foreign` FOREIGN KEY (`list_id`) REFERENCES `{$p}lists` (`id`) ON DELETE SET NULL
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
         ["{$p}unlayer_blocks", "CREATE TABLE IF NOT EXISTS `{$p}unlayer_blocks` (
           `id` bigint unsigned NOT NULL AUTO_INCREMENT, `name` varchar(255) NOT NULL,
           `body` json NOT NULL, `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -623,6 +631,7 @@ function install_migrations(): array
         '2026_06_20_090000_create_sm_sender_profiles_table',
         '2026_09_30_090000_add_test_list_fields',
         '2026_09_30_100000_add_editor_mode_to_sm_campaigns',
+        '2026_10_02_090000_create_sm_unsubscribes_table',
     ];
 }
 
