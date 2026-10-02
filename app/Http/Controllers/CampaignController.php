@@ -46,11 +46,14 @@ class CampaignController extends Controller
     public function edit(Campaign $campaign)
     {
         $editorMode = $campaign->editor_mode ?: 'visual';
+        $progress = in_array($campaign->status, ['sending', 'paused', 'sent'], true)
+            ? app(CampaignSender::class)->snapshot($campaign)
+            : null;
         $lists = MailList::where('is_test', false)->orderBy('name')->get();
         $testLists = MailList::where('is_test', true)->orderBy('name')->get();
         $defaults = [];
         $profiles = SenderProfile::orderBy('name')->get();
-        return view('campaigns.edit', compact('campaign', 'lists', 'testLists', 'defaults', 'profiles', 'editorMode'));
+        return view('campaigns.edit', compact('campaign', 'lists', 'testLists', 'defaults', 'profiles', 'editorMode', 'progress'));
     }
 
     public function update(Request $request, Campaign $campaign)
@@ -224,11 +227,38 @@ class CampaignController extends Controller
 
     public function processBatch(Campaign $campaign)
     {
+        $sender = app(CampaignSender::class);
+
         if (!$campaign->isSending()) {
-            return response()->json(['status' => $campaign->status, 'pending' => 0]);
+            return response()->json($sender->snapshot($campaign));
         }
 
-        $result = app(CampaignSender::class)->processBatch($campaign, app(SesService::class));
+        // Un solo lotto alla volta per campagna: la pagina campagna e la pagina report possono
+        // pilotare l'invio contemporaneamente senza inviare due volte agli stessi destinatari.
+        $lock = null;
+        try {
+            $lock = \Illuminate\Support\Facades\Cache::lock('campaign-batch-' . $campaign->id, 60);
+            $acquired = $lock->get();
+        } catch (\Throwable $e) {
+            report($e);          // lock non disponibile: comportamento precedente (senza lock)
+            $lock = null;
+            $acquired = true;
+        }
+
+        if (!$acquired) {
+            return response()->json($sender->snapshot($campaign) + ['busy' => true]);
+        }
+
+        try {
+            // lo stato può essere cambiato (pausa) mentre si attendeva il lock
+            if (Campaign::whereKey($campaign->id)->value('status') !== 'sending') {
+                return response()->json($sender->snapshot($campaign));
+            }
+
+            $result = $sender->processBatch($campaign, app(SesService::class));
+        } finally {
+            $lock?->release();
+        }
 
         return response()->json($result);
     }
@@ -250,43 +280,43 @@ class CampaignController extends Controller
         return back()->with('success', 'Campagna programmata per il ' . \Carbon\Carbon::parse($request->scheduled_at)->format('d/m/Y H:i') . '.');
     }
 
-    public function pause(Campaign $campaign)
+    public function pause(Request $request, Campaign $campaign)
     {
         if (!$campaign->isSending()) {
-            return back()->with('error', 'La campagna non è in invio.');
+            return $request->expectsJson()
+                ? response()->json(['status' => $campaign->status, 'message' => 'La campagna non è in invio.'], 409)
+                : back()->with('error', 'La campagna non è in invio.');
         }
 
         $campaign->update(['status' => 'paused']);
 
+        if ($request->expectsJson()) {
+            return response()->json(['status' => 'paused']);
+        }
+
         return back()->with('success', 'Invio messo in pausa. I job già in coda verranno scartati automaticamente.');
     }
 
-    public function resume(Campaign $campaign)
+    public function resume(Request $request, Campaign $campaign)
     {
         if (!$campaign->isPaused()) {
-            return back()->with('error', 'La campagna non è in pausa.');
+            return $request->expectsJson()
+                ? response()->json(['status' => $campaign->status, 'message' => 'La campagna non è in pausa.'], 409)
+                : back()->with('error', 'La campagna non è in pausa.');
         }
 
         app(CampaignSender::class)->resume($campaign);
+
+        if ($request->expectsJson()) {
+            return response()->json(['status' => 'sending']);
+        }
 
         return back()->with('success', 'Invio ripreso.');
     }
 
     public function progress(Campaign $campaign)
     {
-        $total   = $campaign->total_recipients ?: 1;
-        $sent    = CampaignSend::where('campaign_id', $campaign->id)->where('status', 'sent')->count();
-        $failed  = CampaignSend::where('campaign_id', $campaign->id)->where('status', 'failed')->count();
-        $pending = CampaignSend::where('campaign_id', $campaign->id)->where('status', 'pending')->count();
-
-        return response()->json([
-            'status'   => $campaign->fresh()->status,
-            'total'    => $campaign->total_recipients,
-            'sent'     => $sent,
-            'failed'   => $failed,
-            'pending'  => $pending,
-            'percent'  => $total > 0 ? round(($sent + $failed) / $total * 100) : 0,
-        ]);
+        return response()->json(app(CampaignSender::class)->snapshot($campaign));
     }
 
     public function validateForSend(Campaign $campaign): array

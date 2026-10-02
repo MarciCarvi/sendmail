@@ -262,7 +262,16 @@
 
         {{-- Progress bar (visibile durante invio e pausa) --}}
         @if(isset($campaign) && in_array($campaign->status, ['sending', 'paused', 'sent']))
-            <div class="mt-3 px-1" x-data="campaignProgress()" x-init="init()">
+            @php
+                $driverCfg = array_merge($progress ?? [], [
+                    'status'    => $campaign->status,
+                    'batchUrl'  => route('campaigns.process-batch', $campaign),
+                    'pauseUrl'  => route('campaigns.pause', $campaign),
+                    'resumeUrl' => route('campaigns.resume', $campaign),
+                    'csrf'      => csrf_token(),
+                ]);
+            @endphp
+            <div class="mt-3 px-1" x-data="sendingDriver({{ Js::from($driverCfg) }})" x-init="init()">
                 <p class="small fw-semibold mb-1">Progresso invio</p>
                 <div class="progress mb-1" style="height: 18px;">
                     <div class="progress-bar"
@@ -275,6 +284,15 @@
                     <span>✅ <span x-text="sent"></span> inviati</span>
                     <span x-show="failed > 0" class="text-danger">❌ <span x-text="failed"></span> falliti</span>
                     <span>📬 <span x-text="total"></span> totali</span>
+                </div>
+                <div x-show="status === 'sending' && !error" class="mt-1 text-muted small">
+                    L'invio prosegue finché questa pagina o il
+                    <a href="{{ route('reports.show', $campaign) }}">report</a> resta aperta.
+                </div>
+                <div x-show="error" x-cloak class="alert alert-danger p-2 small mt-2 mb-0">
+                    <span x-text="error"></span>
+                    <button type="button" class="btn btn-sm btn-danger mt-1 w-100"
+                            x-show="!running" @click="retry()">Riprendi</button>
                 </div>
                 <div x-show="status === 'sent'" class="mt-1 text-success small fw-semibold">Invio completato!</div>
             </div>
@@ -854,70 +872,9 @@ function campaignEditor() {
     }
 }
 
-function campaignProgress() {
-    return {
-        status:  '{{ $campaign->status ?? 'draft' }}',
-        total:   {{ $campaign->total_recipients ?? 0 }},
-        sent:    0,
-        failed:  0,
-        pending: 0,
-        percent: 0,
-        running: false,
-
-        init() {
-            if (this.status === 'sending') {
-                this.startLoop();
-            }
-        },
-
-        async startLoop() {
-            if (this.running) return;
-            this.running = true;
-            while (this.running) {
-                const ok = await this.processBatch();
-                if (!ok) break;
-                // pausa breve tra un batch e l'altro
-                await new Promise(r => setTimeout(r, 300));
-            }
-            this.running = false;
-        },
-
-        async processBatch() {
-            try {
-                const r = await fetch('{{ isset($campaign) ? route('campaigns.process-batch', $campaign) : '#' }}', {
-                    method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
-                });
-                const d = await r.json();
-                this.status  = d.status;
-                this.total   = d.total;
-                this.sent    = d.sent;
-                this.failed  = d.failed;
-                this.pending = d.pending;
-                this.percent = d.percent;
-                return d.status === 'sending';
-            } catch (e) {
-                return false;
-            }
-        },
-
-        pause() {
-            this.running = false;
-            fetch('{{ isset($campaign) ? route('campaigns.pause', $campaign) : '#' }}', {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
-            }).then(() => { this.status = 'paused'; });
-        },
-
-        resume() {
-            fetch('{{ isset($campaign) ? route('campaigns.resume', $campaign) : '#' }}', {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
-            }).then(() => { this.status = 'sending'; this.startLoop(); });
-        }
-    }
-}
 </script>
+
+@include('campaigns._sending-driver')
 
 </body>
 </html>

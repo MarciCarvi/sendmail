@@ -1,12 +1,36 @@
 <x-app-layout>
     <x-slot name="title">Report</x-slot>
 
-    @if($campaigns->isEmpty())
+    @if($inProgress->isNotEmpty())
+        <div class="card border-primary mb-4">
+            <div class="card-header bg-primary text-white fw-semibold">Invii in corso</div>
+            <ul class="list-group list-group-flush">
+                @foreach($inProgress as $c)
+                    <li class="list-group-item d-flex align-items-center gap-3">
+                        <div class="flex-grow-1">
+                            <div class="fw-medium">{{ $c->subject }}</div>
+                            <div class="progress mt-1" style="height: 8px;">
+                                <div class="progress-bar {{ $c->status === 'paused' ? 'bg-warning' : 'progress-bar-striped progress-bar-animated' }}"
+                                     style="width: {{ $c->progress['percent'] }}%"></div>
+                            </div>
+                        </div>
+                        <div class="small text-muted text-nowrap">
+                            {{ number_format($c->progress['sent']) }} / {{ number_format($c->progress['total']) }}
+                            @if($c->status === 'paused') · in pausa @endif
+                        </div>
+                        <a href="{{ route('reports.show', $c) }}" class="btn btn-sm btn-primary">Segui</a>
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    @if($campaigns->isEmpty() && $inProgress->isEmpty())
         <div class="text-center text-muted py-5">
             <p class="mb-2">Nessuna campagna inviata ancora.</p>
             <a href="{{ route('campaigns.index') }}" class="btn btn-primary btn-sm">Vai alle campagne</a>
         </div>
-    @else
+    @elseif($campaigns->isNotEmpty())
         <div class="card">
             <div class="table-responsive">
                 <table class="table table-hover mb-0">

@@ -1,6 +1,22 @@
 # Changelog
 
-## [1.5.1] - 2026-10-03
+## [1.6.0] - 2026-10-02
+
+### Novità
+- **Report in tempo reale**: la pagina del report di una campagna in invio mostra una barra di avanzamento con inviati, in coda, falliti e totali, e le statistiche (consegne, aperture, click, problemi) si aggiornano da sole ogni 30 secondi. A fine invio si aggiornano un'ultima volta.
+- **L'invio prosegue anche dal report**: la pagina del report esegue lo stesso ciclo di invio della pagina della campagna, con i pulsanti «Metti in pausa» e «Riprendi invio». Si può passare da una pagina all'altra senza fermare l'invio. L'invio prosegue finché una delle due pagine resta aperta.
+- **Elenco report**: le campagne in invio o in pausa compaiono in cima all'indice dei report («Invii in corso») con il pulsante «Segui».
+
+### Miglioramenti
+- **Nessun invio doppio**: il server concede un solo lotto alla volta per campagna (lucchetto); se più pagine o schede sono aperte insieme, le altre si limitano ad aggiornare i contatori ogni 5 secondi.
+- **Ciclo di invio più robusto**: in caso di errore di rete o del server il browser riprova fino a 5 volte con attesa crescente, poi mostra un avviso rosso con il pulsante «Riprendi» invece di fermarsi in silenzio. La sessione scaduta viene segnalata.
+- **Un destinatario problematico non blocca più la campagna**: se l'invio a un indirizzo genera un errore imprevisto, quella riga viene segnata «fallita» e registrata nel log, e l'invio continua. Gli errori di rete e di credenziali fermano invece il lotto, che viene ritentato.
+- Pausa e ripresa funzionano anche via richiesta asincrona, senza ricaricare la pagina.
+
+### Note
+- Se chiudi il browser (o il computer va in stop) l'invio si ferma: per riprendere basta riaprire la campagna o il report.
+
+## [1.5.1] - 2026-10-02
 
 ### Correzioni
 - **Consegne perse dal webhook**: gli eventi SES di consegna potevano arrivare prima che l'invio avesse salvato il proprio `message_id`; l'aggiornamento non trovava la riga, il webhook rispondeva comunque «OK» e l'evento andava perso (nella prima campagna circa il 17% dei destinatari risultava senza `delivered_at`). Ora ogni evento viene prima salvato nel nuovo registro `sm_ses_events` e applicato all'invio appena possibile: l'ordine di arrivo non conta più.

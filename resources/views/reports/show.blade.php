@@ -4,8 +4,52 @@
         <a href="{{ route('campaigns.index') }}" class="btn btn-outline-secondary btn-sm">← Campagne</a>
     </x-slot>
 
+    @if($progress)
+        @php
+            $driverCfg = array_merge($progress, [
+                'batchUrl'    => route('campaigns.process-batch', $campaign),
+                'pauseUrl'    => route('campaigns.pause', $campaign),
+                'resumeUrl'   => route('campaigns.resume', $campaign),
+                'csrf'        => csrf_token(),
+                'kpiSelector' => '#kpi-row',
+            ]);
+        @endphp
+        <div class="card border-primary mb-4" x-data="sendingDriver({{ Js::from($driverCfg) }})" x-init="init()">
+            <div class="card-body">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <strong x-text="status === 'sent' ? 'Invio completato' : (status === 'paused' ? 'Invio in pausa' : 'Invio in corso…')"></strong>
+                    <span class="text-muted small" x-show="status === 'sending'">
+                        prosegue finché questa pagina o la pagina della campagna resta aperta
+                    </span>
+                    <div class="ms-auto d-flex gap-2">
+                        <button type="button" class="btn btn-warning btn-sm" x-show="status === 'sending'" @click="pause()">⏸ Metti in pausa</button>
+                        <button type="button" class="btn btn-success btn-sm" x-show="status === 'paused'" @click="resume()">▶ Riprendi invio</button>
+                    </div>
+                </div>
+                <div class="progress mb-2" style="height: 20px;">
+                    <div class="progress-bar"
+                         :class="status === 'sent' ? 'bg-success' : (status === 'paused' ? 'bg-warning' : 'bg-primary progress-bar-striped progress-bar-animated')"
+                         :style="'width:' + percent + '%'" x-text="percent + '%'"></div>
+                </div>
+                <div class="d-flex flex-wrap gap-3 small text-muted">
+                    <span>✅ <strong x-text="sent"></strong> inviati</span>
+                    <span>⏳ <strong x-text="pending"></strong> in coda</span>
+                    <span x-show="failed > 0" class="text-danger">❌ <strong x-text="failed"></strong> falliti</span>
+                    <span>📬 <strong x-text="total"></strong> totali</span>
+                </div>
+                <div x-show="error" x-cloak class="alert alert-danger p-2 small mt-3 mb-0">
+                    <span x-text="error"></span>
+                    <button type="button" class="btn btn-sm btn-danger ms-2" x-show="!running" @click="retry()">Riprendi</button>
+                </div>
+            </div>
+        </div>
+        @push('scripts')
+            @include('campaigns._sending-driver')
+        @endpush
+    @endif
+
     {{-- KPI cards --}}
-    <div class="row g-3 mb-4">
+    <div class="row g-3 mb-4" id="kpi-row">
         <div class="col-6 col-md-2">
             <div class="card text-center h-100">
                 <div class="card-body">

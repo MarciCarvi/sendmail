@@ -7,6 +7,7 @@ use App\Models\CampaignClick;
 use App\Models\CampaignOpen;
 use App\Models\CampaignSend;
 use App\Models\SesEvent;
+use App\Services\CampaignSender;
 use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
@@ -26,11 +27,21 @@ class ReportController extends Controller
                 return $c;
             });
 
-        return view('reports.index', compact('campaigns'));
+        // campagne in invio o in pausa: non sono ancora tra le "inviate" ma si possono già seguire
+        $inProgress = Campaign::whereIn('status', ['sending', 'paused'])
+            ->orderByDesc('updated_at')
+            ->get()
+            ->each(fn($c) => $c->progress = app(CampaignSender::class)->snapshot($c));
+
+        return view('reports.index', compact('campaigns', 'inProgress'));
     }
 
     public function show(Campaign $campaign)
     {
+        $progress = in_array($campaign->status, ['sending', 'paused'], true)
+            ? app(CampaignSender::class)->snapshot($campaign)
+            : null;
+
         // Applica eventuali eventi SES arrivati prima che l'invio salvasse il message_id
         SesEvent::reconcileCampaign($campaign->id);
 
@@ -104,7 +115,7 @@ class ReportController extends Controller
             ->get();
 
         return view('reports.show', compact(
-            'campaign',
+            'campaign', 'progress',
             'sent', 'delivered', 'deliveryRate', 'failed', 'bounced', 'bouncedPermanent', 'complaints',
             'uniqueOpens', 'totalOpens', 'uniqueClicks', 'totalClicks',
             'unsubscribed', 'openRate', 'clickRate', 'unsubRate',
