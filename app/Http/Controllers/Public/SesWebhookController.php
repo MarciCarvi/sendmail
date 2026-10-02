@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
-use App\Models\CampaignSend;
+use App\Models\SesEvent;
 use App\Models\Subscriber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -68,12 +68,17 @@ class SesWebhookController extends Controller
             }
         }
 
-        if ($notifType === 'Delivery') {
-            $messageId = $message['mail']['messageId'] ?? null;
-            if ($messageId) {
-                CampaignSend::where('message_id', $messageId)
-                    ->whereNull('delivered_at')
-                    ->update(['delivered_at' => now()]);
+        // Registro eventi: l'evento viene salvato sempre; viene applicato all'invio se già presente,
+        // altrimenti resta in attesa e lo applica CampaignSender appena salva il message_id.
+        $messageId = $message['mail']['messageId'] ?? null;
+        if ($messageId && in_array($notifType, SesEvent::TYPES, true)) {
+            $event = SesEvent::record($payload['MessageId'] ?? null, $messageId, $notifType, $message);
+            if ($event && !$event->applied_at) {
+                $event->applyToSend();
+            }
+
+            if (random_int(1, 500) === 1) {
+                SesEvent::prune();
             }
         }
 

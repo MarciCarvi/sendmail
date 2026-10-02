@@ -53,12 +53,13 @@
         <div class="col-6 col-md-2">
             <div class="card text-center h-100">
                 <div class="card-body">
-                    <div class="fs-2 fw-bold {{ ($bounced + $failed) > 0 ? 'text-danger' : 'text-muted' }}">{{ $bounced + $failed }}</div>
+                    <div class="fs-2 fw-bold {{ ($bounced + $failed + $complaints) > 0 ? 'text-danger' : 'text-muted' }}">{{ $bounced + $failed + $complaints }}</div>
                     <div class="small text-muted">Problemi</div>
                     <div class="small text-muted">
-                        @if($bounced > 0) {{ $bounced }} bounce @endif
+                        @if($bounced > 0) {{ $bounced }} bounce ({{ $bouncedPermanent }} permanenti, {{ $bounced - $bouncedPermanent }} temporanei) @endif
                         @if($failed > 0) {{ $failed }} falliti @endif
-                        @if($bounced + $failed === 0) nessuno @endif
+                        @if($complaints > 0) {{ $complaints }} complaint @endif
+                        @if($bounced + $failed + $complaints === 0) nessuno @endif
                     </div>
                 </div>
             </div>

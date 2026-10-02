@@ -6,6 +6,7 @@ use App\Models\Campaign;
 use App\Models\CampaignClick;
 use App\Models\CampaignOpen;
 use App\Models\CampaignSend;
+use App\Models\SesEvent;
 use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
@@ -30,10 +31,17 @@ class ReportController extends Controller
 
     public function show(Campaign $campaign)
     {
-        $sent      = CampaignSend::where('campaign_id', $campaign->id)->where('status', 'sent')->count();
-        $delivered = CampaignSend::where('campaign_id', $campaign->id)->whereNotNull('delivered_at')->count();
-        $failed    = CampaignSend::where('campaign_id', $campaign->id)->where('status', 'failed')->count();
-        $bounced   = CampaignSend::where('campaign_id', $campaign->id)->where('status', 'bounced')->count();
+        // Applica eventuali eventi SES arrivati prima che l'invio salvasse il message_id
+        SesEvent::reconcileCampaign($campaign->id);
+
+        $sends     = fn() => CampaignSend::where('campaign_id', $campaign->id);
+        $sent      = $sends()->where('status', 'sent')->count();
+        // consegnati = consegna confermata e nessun bounce successivo (i bounce asincroni arrivano dopo la consegna)
+        $delivered = $sends()->whereNotNull('delivered_at')->whereNull('bounced_at')->count();
+        $failed    = $sends()->where('status', 'failed')->count();
+        $bounced   = $sends()->whereNotNull('bounced_at')->count();
+        $bouncedPermanent = $sends()->where('bounce_type', 'Permanent')->count();
+        $complaints = $sends()->whereNotNull('complained_at')->count();
 
         $uniqueOpens  = CampaignOpen::where('campaign_id', $campaign->id)->distinct('subscriber_id')->count('subscriber_id');
         $totalOpens   = CampaignOpen::where('campaign_id', $campaign->id)->count();
@@ -97,7 +105,7 @@ class ReportController extends Controller
 
         return view('reports.show', compact(
             'campaign',
-            'sent', 'delivered', 'deliveryRate', 'failed', 'bounced',
+            'sent', 'delivered', 'deliveryRate', 'failed', 'bounced', 'bouncedPermanent', 'complaints',
             'uniqueOpens', 'totalOpens', 'uniqueClicks', 'totalClicks',
             'unsubscribed', 'openRate', 'clickRate', 'unsubRate',
             'hourLabels', 'hourData', 'dowLabels', 'dowData',

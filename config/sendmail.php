@@ -4,6 +4,9 @@ return [
 
     'table_prefix' => env('SM_TABLE_PREFIX', 'sm_'),
 
+    // Giorni di conservazione del registro degli eventi SES (sm_ses_events)
+    'ses_events_retention_days' => (int) env('SM_SES_EVENTS_RETENTION_DAYS', 180),
+
     'version' => function_exists('file_get_contents') && file_exists(base_path('VERSION'))
         ? trim(file_get_contents(base_path('VERSION')))
         : '1.0.0',

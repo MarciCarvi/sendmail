@@ -560,6 +560,8 @@ function install_sql(string $p): array
           `status` enum('pending','sent','failed','bounced','complained') NOT NULL DEFAULT 'pending',
           `sent_at` timestamp NULL DEFAULT NULL, `message_id` varchar(255) DEFAULT NULL,
           `delivered_at` timestamp NULL DEFAULT NULL,
+          `bounced_at` timestamp NULL DEFAULT NULL, `bounce_type` varchar(20) DEFAULT NULL,
+          `bounce_subtype` varchar(40) DEFAULT NULL, `complained_at` timestamp NULL DEFAULT NULL,
           `created_at` timestamp NULL DEFAULT NULL, `updated_at` timestamp NULL DEFAULT NULL,
           PRIMARY KEY (`id`),
           KEY `{$p}campaign_sends_campaign_id_index` (`campaign_id`),
@@ -601,6 +603,16 @@ function install_sql(string $p): array
           PRIMARY KEY (`id`), UNIQUE KEY `{$p}unsubscribes_sender_domain_email_unique` (`sender_domain`,`email`),
           CONSTRAINT `{$p}unsubscribes_list_id_foreign` FOREIGN KEY (`list_id`) REFERENCES `{$p}lists` (`id`) ON DELETE SET NULL
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
+        ["{$p}ses_events", "CREATE TABLE IF NOT EXISTS `{$p}ses_events` (
+          `id` bigint unsigned NOT NULL AUTO_INCREMENT, `sns_message_id` varchar(100) DEFAULT NULL,
+          `message_id` varchar(255) NOT NULL, `event_type` varchar(30) NOT NULL,
+          `bounce_type` varchar(20) DEFAULT NULL, `bounce_subtype` varchar(40) DEFAULT NULL,
+          `recipient` varchar(255) DEFAULT NULL, `diagnostic` text,
+          `occurred_at` timestamp NULL DEFAULT NULL, `applied_at` timestamp NULL DEFAULT NULL,
+          `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (`id`), UNIQUE KEY `{$p}ses_events_sns_message_id_unique` (`sns_message_id`),
+          KEY `{$p}ses_events_message_id_index` (`message_id`), KEY `{$p}ses_events_applied_at_index` (`applied_at`)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
         ["{$p}unlayer_blocks", "CREATE TABLE IF NOT EXISTS `{$p}unlayer_blocks` (
           `id` bigint unsigned NOT NULL AUTO_INCREMENT, `name` varchar(255) NOT NULL,
           `body` json NOT NULL, `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -632,6 +644,7 @@ function install_migrations(): array
         '2026_09_30_090000_add_test_list_fields',
         '2026_09_30_100000_add_editor_mode_to_sm_campaigns',
         '2026_10_02_090000_create_sm_unsubscribes_table',
+        '2026_10_03_090000_create_sm_ses_events_table',
     ];
 }
 

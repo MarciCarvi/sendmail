@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.5.1] - 2026-10-03
+
+### Correzioni
+- **Consegne perse dal webhook**: gli eventi SES di consegna potevano arrivare prima che l'invio avesse salvato il proprio `message_id`; l'aggiornamento non trovava la riga, il webhook rispondeva comunque «OK» e l'evento andava perso (nella prima campagna circa il 17% dei destinatari risultava senza `delivered_at`). Ora ogni evento viene prima salvato nel nuovo registro `sm_ses_events` e applicato all'invio appena possibile: l'ordine di arrivo non conta più.
+- **Contatore bounce del report sempre a zero**: il bounce veniva registrato solo sull'iscritto, mai sull'invio. Ora i bounce (permanenti e temporanei, con tipo e sottotipo) e i complaint sono salvati sull'invio e il report li mostra. I bounce asincroni, arrivati dopo la consegna, non cancellano più la consegna ma vengono tolti dai «Consegnati».
+- **Double opt-in**: la colonna `status` degli iscritti non conteneva il valore `unconfirmed` nelle installazioni create con le migration; ora viene allineata.
+
+### Novità
+- Il webhook registra anche gli eventi `DeliveryDelay` e `Reject`, se attivati nel Configuration Set di SES (non modificano gli invii).
+- Il registro eventi si svuota da solo dopo 180 giorni (`SM_SES_EVENTS_RETENTION_DAYS`).
+
+### Note
+- Gli eventi consumati prima di questa versione non sono recuperabili: valgono per gli invii da ora in poi.
+
 ## [1.5.0] - 2026-10-02
 
 ### Novità

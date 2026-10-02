@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Http\Controllers\CampaignController;
 use App\Models\Blacklist;
+use App\Models\SesEvent;
 use App\Models\Unsubscribe;
 use App\Models\Campaign;
 use App\Models\CampaignSend;
@@ -103,6 +104,11 @@ class CampaignSender
                 'sent_at'    => $messageId ? now() : null,
                 'message_id' => $messageId ?: null,
             ]);
+
+            // Se l'evento SES (consegna/bounce) è arrivato prima di questo salvataggio, applicalo ora
+            if ($messageId) {
+                SesEvent::applyPendingFor($messageId);
+            }
 
             $messageId ? $sentCount++ : $failedCount++;
         }
