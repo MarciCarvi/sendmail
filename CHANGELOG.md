@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.9] - 2026-10-02
+
+### Correzioni
+- **Anteprima mobile**: passando da Desktop a Mobile l'HTML viene ora ricaricato da zero nella nuova larghezza (media query e layout rivalutati), invece di limitarsi a restringere la finestra. Le email a larghezza fissa non responsive vengono rimpicciolite per entrare nello schermo, come fanno Apple Mail e Gmail sul telefono, e non più tagliate a destra.
+- Nell'editor «HTML puro» c'è il pulsante ↻ per ricaricare a mano l'anteprima.
+
 ## [1.4.8] - 2026-10-01
 
 ### Novità

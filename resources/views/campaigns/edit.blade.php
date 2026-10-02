@@ -349,14 +349,16 @@
                     <div class="ms-auto d-flex gap-1">
                         <button type="button" class="btn btn-sm btn-outline-secondary"
                                 :class="previewDevice === 'desktop' ? 'active' : ''"
-                                @click="previewDevice = 'desktop'">Desktop</button>
+                                @click="setDevice('desktop')">Desktop</button>
                         <button type="button" class="btn btn-sm btn-outline-secondary"
                                 :class="previewDevice === 'mobile' ? 'active' : ''"
-                                @click="previewDevice = 'mobile'">Mobile</button>
+                                @click="setDevice('mobile')">Mobile</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Ricarica l'anteprima"
+                                @click="updatePreview('htmlPreviewFrame')">↻</button>
                     </div>
                 </div>
                 <div class="flex-grow-1 d-flex justify-content-center p-3 overflow-auto">
-                    <iframe id="htmlPreviewFrame" sandbox
+                    <iframe id="htmlPreviewFrame" sandbox="allow-same-origin"
                             :style="previewDevice === 'mobile' ? 'width:375px;' : 'width:100%;'"
                             style="border: 1px solid #dee2e6; background: white; height: 100%;"
                             class="shadow-sm"></iframe>
@@ -389,10 +391,10 @@
                 <div class="ms-auto d-flex gap-1">
                     <button type="button" class="btn btn-sm btn-outline-secondary"
                             :class="previewDevice === 'desktop' ? 'active' : ''"
-                            @click="previewDevice = 'desktop'">Desktop</button>
+                            @click="setDevice('desktop')">Desktop</button>
                     <button type="button" class="btn btn-sm btn-outline-secondary"
                             :class="previewDevice === 'mobile' ? 'active' : ''"
-                            @click="previewDevice = 'mobile'">Mobile</button>
+                            @click="setDevice('mobile')">Mobile</button>
                 </div>
             </div>
             <div class="flex-grow-1 d-flex justify-content-center bg-light p-3 overflow-auto">
@@ -701,7 +703,32 @@ function campaignEditor() {
             Object.entries(vars).forEach(([key, val]) => {
                 html = html.split('{{' + key + '}}').join(val);
             });
+            // A ogni render il documento viene ricaricato da zero, così media query e
+            // layout vengono rivalutati con la larghezza attuale della finestra.
+            frame.onload = () => this.fitPreview(frame);
             frame.srcdoc = html || '<p style="font-family:sans-serif;padding:20px;color:#999">Nessun contenuto HTML.</p>';
+        },
+
+        setDevice(device) {
+            this.previewDevice = device;
+            // attende che la larghezza dell'iframe sia aggiornata, poi ricarica l'HTML
+            this.$nextTick(() => this.updatePreview(this.tab === 'preview' ? 'previewFrame' : 'htmlPreviewFrame'));
+        },
+
+        // Come i client mobile (Apple Mail, Gmail): un'email a larghezza fissa che non
+        // è responsive viene rimpicciolita per entrare nello schermo, non tagliata.
+        fitPreview(frame) {
+            try {
+                const root = frame.contentDocument && frame.contentDocument.documentElement;
+                if (!root) return;
+                root.style.zoom = '';
+                if (this.previewDevice !== 'mobile') return;
+                const available = frame.clientWidth;
+                const content = root.scrollWidth;
+                if (content > available + 1) {
+                    root.style.zoom = (available / content).toFixed(3);
+                }
+            } catch (e) { /* iframe non accessibile: lascia l'anteprima così com'è */ }
         },
 
         save() {
