@@ -4,6 +4,9 @@ return [
 
     'table_prefix' => env('SM_TABLE_PREFIX', 'sm_'),
 
+    // Fuso orario con cui si mostrano le date nei rapporti e nei CSV (il database salva in UTC)
+    'report_timezone' => env('SM_REPORT_TIMEZONE', 'Europe/Rome'),
+
     // Giorni di conservazione del registro degli eventi SES (sm_ses_events)
     'ses_events_retention_days' => (int) env('SM_SES_EVENTS_RETENTION_DAYS', 180),
 

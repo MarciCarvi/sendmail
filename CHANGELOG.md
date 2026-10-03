@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.8.0] - 2026-10-03
+
+### Novità
+- **Rapporto per il cliente** (report della campagna → *Documenti → Rapporto per il cliente*): una pagina A4 pronta per la stampa o il PDF («Stampa / Salva come PDF», in una pagina per le campagne nella media). In testata il **logo** (quello predefinito fornito con l'applicazione, sostituibile da *Impostazioni → Rapporti per il cliente*) con la riga arancione; sotto il titolo della campagna, l'indirizzo del mittente e data e ora di invio (ora di Roma).
+- **Gli stessi sei riquadri del report del software**: Inviati, Consegnati, Open rate, Click rate, Unsub rate, Problemi. Le percentuali sono calcolate sugli invii, come nel report.
+- Il rapporto non contiene indirizzi: oltre ai riquadri riporta la **consegna**, **chi non ha ricevuto la email e perché** (indirizzo inesistente, casella piena, problema temporaneo, nessuna conferma di consegna…), i **link più cliccati**, le aperture come dato indicativo e, per completezza, disiscrizioni e segnalazioni come spam. Il piè di pagina ha il filo viola di SendMail, la data di aggiornamento e, in basso a destra, «Rapporto realizzato da SendMail» con il logo.
+- **CSV destinatari** (*Documenti → CSV destinatari*): una riga per destinatario con stato dell'invio, data di consegna, esito e motivo (tipo di bounce e messaggio del server), aperture, click, disiscrizione e reclamo. Pensato per chi aggiorna i database e fa le estrazioni; separatore `;` e UTF-8 con BOM, si apre correttamente in Excel.
+- **Cerca destinatario**: dalla pagina Report si cerca un indirizzo e si vede la cronologia completa di ogni invio (inviata, consegnata, bounce, aperture, click), con lo stato delle iscrizioni, disiscrizioni, blacklist e segnalazione «non consegnato».
+- Il report della campagna ha un nuovo menu **Documenti**.
+
+### Correzioni
+- **Disiscritti di una campagna**: ora contano solo gli iscritti raggiunti che si sono disiscritti dal primo invio in poi (prima venivano contati anche quelli disiscritti in precedenza).
+
+### Note
+- Le date dei nuovi documenti sono nel fuso di Roma (`SM_REPORT_TIMEZONE` per cambiarlo); il resto dell'applicazione mostra ancora l'ora UTC.
+- La campagna inviata prima della 1.5.1 ha dati di consegna incompleti: non è adatta a un rapporto per il cliente.
+
 ## [1.7.0] - 2026-10-03
 
 ### Novità

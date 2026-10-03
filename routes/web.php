@@ -27,6 +27,7 @@ Route::middleware(['auth', 'verified', 'check.license'])->group(function () {
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
     Route::post('/settings/test-ses', [SettingsController::class, 'testSes'])->name('settings.test-ses');
+    Route::post('/settings/report-brand', [SettingsController::class, 'updateReportBrand'])->name('settings.report-brand');
 
     // Profili di invio ("vesti")
     Route::get('/sender-profiles', [SenderProfileController::class, 'index'])->name('sender-profiles.index');
@@ -86,7 +87,10 @@ Route::middleware(['auth', 'verified', 'check.license'])->group(function () {
 
     // Report
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/recipient', [ReportController::class, 'recipient'])->name('reports.recipient');
     Route::get('/reports/{campaign}', [ReportController::class, 'show'])->name('reports.show');
+    Route::get('/reports/{campaign}/summary', [ReportController::class, 'clientReport'])->name('reports.summary');
+    Route::get('/reports/{campaign}/recipients/export', [ReportController::class, 'exportRecipients'])->name('reports.recipients.export');
     Route::get('/reports/{campaign}/undelivered', [ReportController::class, 'undelivered'])->name('reports.undelivered');
     Route::get('/reports/{campaign}/undelivered/export', [ReportController::class, 'exportUndelivered'])->name('reports.undelivered.export');
 

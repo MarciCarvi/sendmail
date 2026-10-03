@@ -1,6 +1,13 @@
 <x-app-layout>
     <x-slot name="title">Report</x-slot>
 
+    <form method="GET" action="{{ route('reports.recipient') }}" class="row g-2 mb-4">
+        <div class="col-md-5">
+            <input type="email" name="email" class="form-control form-control-sm" placeholder="Cerca un destinatario per email…" required>
+        </div>
+        <div class="col-auto"><button class="btn btn-outline-secondary btn-sm">Cerca</button></div>
+    </form>
+
     @if($inProgress->isNotEmpty())
         <div class="card border-primary mb-4">
             <div class="card-header bg-primary text-white fw-semibold">Invii in corso</div>

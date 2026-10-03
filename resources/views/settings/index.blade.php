@@ -221,6 +221,41 @@
                 <button type="submit" class="btn btn-primary">Salva impostazioni</button>
             </form>
 
+            {{-- Marchio dei rapporti per il cliente (form separato: carica un file) --}}
+            <form method="POST" action="{{ route('settings.report-brand') }}" enctype="multipart/form-data" class="mt-4">
+                @csrf
+                <div class="card mb-4">
+                    <div class="card-header fw-semibold">Rapporti per il cliente</div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Nome mostrato nei rapporti</label>
+                            <input type="text" name="report_brand_name" maxlength="100"
+                                   class="form-control @error('report_brand_name') is-invalid @enderror"
+                                   value="{{ old('report_brand_name', $settings['report_brand_name'] ?? '') }}"
+                                   placeholder="{{ $settings['app_name'] }}">
+                            <div class="form-text">Se vuoto si usa il nome dell'applicazione.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Logo <span class="text-muted">(PNG, JPG o WebP, max 1 MB)</span></label>
+                            @if(!empty($settings['report_logo']))
+                                <div class="mb-2 d-flex align-items-center gap-3">
+                                    <img src="{{ asset('storage/' . $settings['report_logo']) }}" alt="Logo attuale"
+                                         style="max-height: 48px; max-width: 200px;" class="border rounded p-1 bg-white">
+                                    <div class="form-check mb-0">
+                                        <input class="form-check-input" type="checkbox" name="remove_logo" value="1" id="remove_logo">
+                                        <label class="form-check-label" for="remove_logo">Rimuovi il logo</label>
+                                    </div>
+                                </div>
+                            @endif
+                            <input type="file" name="report_logo" accept=".png,.jpg,.jpeg,.webp"
+                                   class="form-control @error('report_logo') is-invalid @enderror">
+                            @error('report_logo')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <button type="submit" class="btn btn-outline-primary btn-sm">Salva marchio</button>
+                    </div>
+                </div>
+            </form>
+
         </div>
     </div>
 </x-app-layout>

@@ -20,6 +20,11 @@ class CampaignSend extends Model
         'complained_at' => 'datetime',
     ];
 
+    public function campaign()
+    {
+        return $this->belongsTo(Campaign::class);
+    }
+
     public function subscriber()
     {
         return $this->belongsTo(Subscriber::class);

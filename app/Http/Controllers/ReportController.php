@@ -8,6 +8,7 @@ use App\Models\CampaignOpen;
 use App\Models\CampaignSend;
 use App\Models\SesEvent;
 use App\Services\CampaignSender;
+use App\Services\CampaignReportService;
 use App\Services\UndeliveredService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -47,30 +48,9 @@ class ReportController extends Controller
         // Applica eventuali eventi SES arrivati prima che l'invio salvasse il message_id
         SesEvent::reconcileCampaign($campaign->id);
 
-        $sends     = fn() => CampaignSend::where('campaign_id', $campaign->id);
-        $sent      = $sends()->where('status', 'sent')->count();
-        // consegnati = consegna confermata e nessun bounce successivo (i bounce asincroni arrivano dopo la consegna)
-        $delivered = $sends()->whereNotNull('delivered_at')->whereNull('bounced_at')->count();
-        $failed    = $sends()->where('status', 'failed')->count();
-        $bounced   = $sends()->whereNotNull('bounced_at')->count();
-        $bouncedPermanent = $sends()->where('bounce_type', 'Permanent')->count();
-        $complaints = $sends()->whereNotNull('complained_at')->count();
-        $undeliveredCount = $sends()->where('status', 'sent')
-            ->where(fn($q) => $q->whereNull('delivered_at')->orWhereNotNull('bounced_at'))->count();
-
-        $uniqueOpens  = CampaignOpen::where('campaign_id', $campaign->id)->distinct('subscriber_id')->count('subscriber_id');
-        $totalOpens   = CampaignOpen::where('campaign_id', $campaign->id)->count();
-        $uniqueClicks = CampaignClick::where('campaign_id', $campaign->id)->distinct('subscriber_id')->count('subscriber_id');
-        $totalClicks  = CampaignClick::where('campaign_id', $campaign->id)->count();
-
-        $unsubscribed = \App\Models\Subscriber::whereHas('sends', function ($q) use ($campaign) {
-            $q->where('campaign_id', $campaign->id)->where('status', 'sent');
-        })->where('status', 'unsubscribed')->count();
-
-        $deliveryRate = $sent > 0 ? round($delivered   / $sent * 100, 1) : 0;
-        $openRate     = $sent > 0 ? round($uniqueOpens  / $sent * 100, 1) : 0;
-        $clickRate    = $sent > 0 ? round($uniqueClicks / $sent * 100, 1) : 0;
-        $unsubRate    = $sent > 0 ? round($unsubscribed / $sent * 100, 1) : 0;
+        // Gli stessi numeri alimentano il rapporto per il cliente (CampaignReportService::kpis)
+        $k = app(CampaignReportService::class)->kpis($campaign);
+        extract($k, EXTR_SKIP);
 
         // Aperture per ora del giorno (aggregato su tutti i giorni)
         $opensByHour = CampaignOpen::where('campaign_id', $campaign->id)
@@ -191,6 +171,43 @@ class ReportController extends Controller
 
             fclose($out);
         }, "non-consegnati-campagna-{$campaign->id}.csv", ['Content-Type' => 'text/csv']);
+    }
+
+    /** Rapporto per il cliente: pagina stampabile (si salva come PDF dal browser). */
+    public function clientReport(Campaign $campaign, CampaignReportService $reports)
+    {
+        SesEvent::reconcileCampaign($campaign->id);
+
+        return view('reports.summary', [
+            'campaign' => $campaign,
+            'summary'  => $reports->summary($campaign),
+            'brand'    => $reports->brand(),
+        ]);
+    }
+
+    /** CSV per destinatario (uso tecnico: aggiornamento database ed estrazioni). */
+    public function exportRecipients(Campaign $campaign, CampaignReportService $reports)
+    {
+        SesEvent::reconcileCampaign($campaign->id);
+
+        return response()->streamDownload(function () use ($campaign, $reports) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF"); // BOM UTF-8: Excel mostra correttamente gli accenti
+            fputcsv($out, CampaignReportService::csvHeader(), ';');
+            foreach ($reports->recipientRows($campaign) as $row) {
+                fputcsv($out, $row, ';');
+            }
+            fclose($out);
+        }, "destinatari-campagna-{$campaign->id}.csv", ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /** Cronologia di un indirizzo su tutte le campagne. */
+    public function recipient(Request $request, CampaignReportService $reports)
+    {
+        $email = strtolower(trim((string) $request->query('email', '')));
+        $timeline = $email !== '' ? $reports->timeline($email) : null;
+
+        return view('reports.recipient', compact('email', 'timeline'));
     }
 
     /** Eventi di bounce, ritardo e rifiuto dei messaggi indicati, raggruppati per message_id. */

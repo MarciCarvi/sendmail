@@ -6,6 +6,7 @@ use App\Models\Setting;
 use App\Services\LicenseService;
 use App\Services\SesService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class SettingsController extends Controller
 {
@@ -21,6 +22,8 @@ class SettingsController extends Controller
             'ses_sending_rate'        => Setting::get('ses_sending_rate', '14'),
             'ses_configuration_set'   => Setting::get('ses_configuration_set', ''),
             'blocked_domains'    => Setting::get('blocked_domains', ''),
+            'report_brand_name'  => Setting::get('report_brand_name', ''),
+            'report_logo'        => Setting::get('report_logo'),
             'license_key'        => Setting::get('license_key', ''),
         ];
 
@@ -69,6 +72,32 @@ class SettingsController extends Controller
         }
 
         return back()->with('success', 'Impostazioni salvate.');
+    }
+
+    /** Nome e logo mostrati nei rapporti per il cliente. */
+    public function updateReportBrand(Request $request)
+    {
+        $request->validate([
+            'report_brand_name' => 'nullable|string|max:100',
+            'report_logo'       => 'nullable|file|image|mimes:png,jpg,jpeg,webp|max:1024',
+        ]);
+
+        Setting::set('report_brand_name', trim((string) $request->report_brand_name));
+
+        if ($request->boolean('remove_logo') || $request->hasFile('report_logo')) {
+            if ($old = Setting::get('report_logo')) {
+                Storage::disk('public')->delete($old);
+            }
+            Setting::set('report_logo', null);
+        }
+
+        if ($request->hasFile('report_logo')) {
+            $file = $request->file('report_logo');
+            $path = $file->storeAs('branding', 'report-logo-' . time() . '.' . strtolower($file->getClientOriginalExtension()), 'public');
+            Setting::set('report_logo', $path);
+        }
+
+        return back()->with('success', 'Marchio dei rapporti salvato.');
     }
 
     public function testSes()

@@ -2,6 +2,14 @@
     <x-slot name="title">Report — {{ $campaign->subject }}</x-slot>
     <x-slot name="actions">
         <div class="d-flex gap-2">
+            <div class="dropdown">
+                <button class="btn btn-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Documenti</button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="{{ route('reports.summary', $campaign) }}" target="_blank">Rapporto per il cliente (stampa / PDF)</a></li>
+                    <li><a class="dropdown-item" href="{{ route('reports.recipients.export', $campaign) }}">CSV destinatari (uso tecnico)</a></li>
+                    <li><a class="dropdown-item" href="{{ route('reports.undelivered.export', $campaign) }}">CSV non consegnati</a></li>
+                </ul>
+            </div>
             <a href="{{ route('reports.undelivered', $campaign) }}" class="btn btn-outline-secondary btn-sm">
                 Non consegnati ({{ number_format($undeliveredCount) }})
             </a>
