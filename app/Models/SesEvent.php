@@ -20,8 +20,8 @@ class SesEvent extends Model
     protected $table = 'sm_ses_events';
 
     protected $fillable = [
-        'sns_message_id', 'message_id', 'event_type', 'bounce_type', 'bounce_subtype',
-        'recipient', 'diagnostic', 'occurred_at', 'applied_at',
+        'sns_message_id', 'message_id', 'event_type', 'source', 'topic_arn', 'duplicates', 'dup_source',
+        'bounce_type', 'bounce_subtype', 'recipient', 'diagnostic', 'occurred_at', 'applied_at',
     ];
 
     protected $casts = [
@@ -31,7 +31,7 @@ class SesEvent extends Model
     ];
 
     /** Salva l'evento (idempotente rispetto all'id del messaggio SNS). */
-    public static function record(?string $snsMessageId, string $messageId, string $type, array $message): ?self
+    public static function record(?string $snsMessageId, string $messageId, string $type, array $message, ?string $topicArn = null): ?self
     {
         if (!in_array($type, self::TYPES, true)) {
             return null;
@@ -41,7 +41,16 @@ class SesEvent extends Model
             return $existing;
         }
 
-        $data = ['sns_message_id' => $snsMessageId, 'message_id' => $messageId, 'event_type' => $type];
+        // eventType = Configuration Set (event publishing); notificationType = notifiche di identità
+        $source = array_key_exists('eventType', $message) ? 'eventType' : 'notificationType';
+
+        $data = [
+            'sns_message_id' => $snsMessageId,
+            'message_id'     => $messageId,
+            'event_type'     => $type,
+            'source'         => $source,
+            'topic_arn'      => $topicArn ? mb_substr($topicArn, 0, 255) : null,
+        ];
 
         switch ($type) {
             case 'Delivery':
@@ -76,6 +85,28 @@ class SesEvent extends Model
                 $data['diagnostic']  = $message['reject']['reason'] ?? null;
                 $data['occurred_at'] = self::parseTime($message['mail']['timestamp'] ?? null);
                 break;
+        }
+
+        // Stesso evento già registrato (es. pubblicato due volte da percorsi diversi: Configuration Set
+        // e notifiche di identità, o su due topic): non duplicarlo, ma tieni traccia del doppione.
+        if (!empty($data['occurred_at'])) {
+            $same = static::where('message_id', $messageId)
+                ->where('event_type', $type)
+                ->where('occurred_at', $data['occurred_at'])
+                ->when(
+                    $data['recipient'] ?? null,
+                    fn($q, $r) => $q->where('recipient', $r),
+                    fn($q) => $q->whereNull('recipient')
+                )
+                ->first();
+
+            if ($same) {
+                $same->duplicates = min(65000, $same->duplicates + 1);
+                $same->dup_source = mb_substr($source . '|' . basename(str_replace(':', '/', (string) $topicArn)), 0, 120);
+                $same->save();
+
+                return $same;
+            }
         }
 
         try {

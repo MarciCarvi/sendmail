@@ -1,7 +1,12 @@
 <x-app-layout>
     <x-slot name="title">Report — {{ $campaign->subject }}</x-slot>
     <x-slot name="actions">
-        <a href="{{ route('campaigns.index') }}" class="btn btn-outline-secondary btn-sm">← Campagne</a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('reports.undelivered', $campaign) }}" class="btn btn-outline-secondary btn-sm">
+                Non consegnati ({{ number_format($undeliveredCount) }})
+            </a>
+            <a href="{{ route('campaigns.index') }}" class="btn btn-outline-secondary btn-sm">← Campagne</a>
+        </div>
     </x-slot>
 
     @if($progress)

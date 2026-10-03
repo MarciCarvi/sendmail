@@ -606,12 +606,25 @@ function install_sql(string $p): array
         ["{$p}ses_events", "CREATE TABLE IF NOT EXISTS `{$p}ses_events` (
           `id` bigint unsigned NOT NULL AUTO_INCREMENT, `sns_message_id` varchar(100) DEFAULT NULL,
           `message_id` varchar(255) NOT NULL, `event_type` varchar(30) NOT NULL,
+          `source` varchar(20) DEFAULT NULL, `topic_arn` varchar(255) DEFAULT NULL,
+          `duplicates` smallint unsigned NOT NULL DEFAULT '0', `dup_source` varchar(120) DEFAULT NULL,
           `bounce_type` varchar(20) DEFAULT NULL, `bounce_subtype` varchar(40) DEFAULT NULL,
           `recipient` varchar(255) DEFAULT NULL, `diagnostic` text,
           `occurred_at` timestamp NULL DEFAULT NULL, `applied_at` timestamp NULL DEFAULT NULL,
           `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY (`id`), UNIQUE KEY `{$p}ses_events_sns_message_id_unique` (`sns_message_id`),
           KEY `{$p}ses_events_message_id_index` (`message_id`), KEY `{$p}ses_events_applied_at_index` (`applied_at`)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
+        ["{$p}undelivered", "CREATE TABLE IF NOT EXISTS `{$p}undelivered` (
+          `id` bigint unsigned NOT NULL AUTO_INCREMENT, `email` varchar(255) NOT NULL,
+          `domain` varchar(191) NOT NULL, `consecutive` smallint unsigned NOT NULL DEFAULT '3',
+          `last_campaign_id` bigint unsigned DEFAULT NULL, `evidence` json DEFAULT NULL,
+          `mx_status` varchar(20) DEFAULT NULL, `mx_checked_at` timestamp NULL DEFAULT NULL,
+          `suggestion` varchar(191) DEFAULT NULL, `flagged_at` timestamp NULL DEFAULT NULL,
+          `cleared_at` timestamp NULL DEFAULT NULL,
+          `created_at` timestamp NULL DEFAULT NULL, `updated_at` timestamp NULL DEFAULT NULL,
+          PRIMARY KEY (`id`), UNIQUE KEY `{$p}undelivered_email_unique` (`email`),
+          KEY `{$p}undelivered_domain_index` (`domain`)
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
         ["{$p}unlayer_blocks", "CREATE TABLE IF NOT EXISTS `{$p}unlayer_blocks` (
           `id` bigint unsigned NOT NULL AUTO_INCREMENT, `name` varchar(255) NOT NULL,
@@ -645,6 +658,7 @@ function install_migrations(): array
         '2026_09_30_100000_add_editor_mode_to_sm_campaigns',
         '2026_10_02_090000_create_sm_unsubscribes_table',
         '2026_10_03_090000_create_sm_ses_events_table',
+        '2026_10_03_100000_create_sm_undelivered_table',
     ];
 }
 

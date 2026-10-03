@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Http\Controllers\CampaignController;
 use App\Models\Blacklist;
 use App\Models\SesEvent;
+use App\Models\Undelivered;
 use App\Models\Unsubscribe;
 use Illuminate\Support\Facades\Log;
 use App\Models\Campaign;
@@ -23,6 +24,15 @@ class CampaignSender
     {
         $listIds = $campaign->lists()->where('sm_lists.is_test', false)->pluck('sm_lists.id');
 
+        // Aggiorna le segnalazioni "non consegnati" (N invii consecutivi senza consegna) prima di costruire
+        // l'elenco: un errore qui non deve mai bloccare l'invio.
+        try {
+            app(UndeliveredService::class)->evaluate();
+        } catch (\Throwable $e) {
+            Log::warning('Analisi non consegnati fallita', ['error' => $e->getMessage()]);
+        }
+        $undelivered = Undelivered::activeEmails();
+
         // Disiscritti per il cliente (dominio del mittente della campagna)
         $unsubscribed = Unsubscribe::suppressedFor($campaign->from_email);
 
@@ -31,6 +41,7 @@ class CampaignSender
             ->get()
             ->filter(fn($s) => !Blacklist::isBlacklisted($s->email) && !Blacklist::isDomainBlocked($s->email))
             ->reject(fn($s) => isset($unsubscribed[strtolower($s->email)]))
+            ->reject(fn($s) => isset($undelivered[strtolower($s->email)]))
             ->unique('email')
             ->values();
 

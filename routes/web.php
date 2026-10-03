@@ -10,6 +10,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SubscriberController;
 use App\Http\Controllers\ImageUploadController;
 use App\Http\Controllers\UnlayerController;
+use App\Http\Controllers\UndeliveredController;
 use App\Http\Controllers\UnsubscribeListController;
 use App\Http\Controllers\UpdateController;
 use Illuminate\Support\Facades\Route;
@@ -70,6 +71,14 @@ Route::middleware(['auth', 'verified', 'check.license'])->group(function () {
     Route::get('/unsubscribes', [UnsubscribeListController::class, 'index'])->name('unsubscribes.index');
     Route::delete('/unsubscribes/{unsubscribe}', [UnsubscribeListController::class, 'destroy'])->name('unsubscribes.destroy');
 
+    // Non consegnati (N invii consecutivi senza consegna)
+    Route::get('/undelivered', [UndeliveredController::class, 'index'])->name('undelivered.index');
+    Route::post('/undelivered/evaluate', [UndeliveredController::class, 'evaluate'])->name('undelivered.evaluate');
+    Route::put('/undelivered/settings', [UndeliveredController::class, 'settings'])->name('undelivered.settings');
+    Route::post('/undelivered/check-mx', [UndeliveredController::class, 'checkMx'])->name('undelivered.check-mx');
+    Route::post('/undelivered/{undelivered}/reinstate', [UndeliveredController::class, 'reinstate'])->name('undelivered.reinstate');
+    Route::post('/undelivered/{undelivered}/blacklist', [UndeliveredController::class, 'blacklist'])->name('undelivered.blacklist');
+
     // Blacklist
     Route::get('/blacklist', [BlacklistController::class, 'index'])->name('blacklist.index');
     Route::post('/blacklist', [BlacklistController::class, 'store'])->name('blacklist.store');
@@ -78,6 +87,8 @@ Route::middleware(['auth', 'verified', 'check.license'])->group(function () {
     // Report
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/{campaign}', [ReportController::class, 'show'])->name('reports.show');
+    Route::get('/reports/{campaign}/undelivered', [ReportController::class, 'undelivered'])->name('reports.undelivered');
+    Route::get('/reports/{campaign}/undelivered/export', [ReportController::class, 'exportUndelivered'])->name('reports.undelivered.export');
 
     // Campagne
     Route::get('/campaigns', [CampaignController::class, 'index'])->name('campaigns.index');

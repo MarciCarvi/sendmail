@@ -12,6 +12,8 @@ Artisan::command('inspire', function () {
 
 Schedule::call(fn() => \App\Models\SesEvent::prune())->daily()->name('prune-ses-events');
 
+Schedule::call(fn() => app(\App\Services\UndeliveredService::class)->evaluate())->daily()->name('evaluate-undelivered');
+
 Schedule::call(function () {
     Campaign::where('status', 'scheduled')
         ->where('scheduled_at', '<=', now())

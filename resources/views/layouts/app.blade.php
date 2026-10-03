@@ -67,6 +67,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('undelivered.index') }}"
+                        class="nav-link {{ request()->routeIs('undelivered.*') ? 'active' : '' }}">
+                        Non consegnati
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('blacklist.index') }}"
                         class="nav-link {{ request()->routeIs('blacklist.*') ? 'active' : '' }}">
                         Blacklist

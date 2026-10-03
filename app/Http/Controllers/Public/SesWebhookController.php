@@ -72,7 +72,7 @@ class SesWebhookController extends Controller
         // altrimenti resta in attesa e lo applica CampaignSender appena salva il message_id.
         $messageId = $message['mail']['messageId'] ?? null;
         if ($messageId && in_array($notifType, SesEvent::TYPES, true)) {
-            $event = SesEvent::record($payload['MessageId'] ?? null, $messageId, $notifType, $message);
+            $event = SesEvent::record($payload['MessageId'] ?? null, $messageId, $notifType, $message, $payload['TopicArn'] ?? null);
             if ($event && !$event->applied_at) {
                 $event->applyToSend();
             }

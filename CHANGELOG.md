@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.7.0] - 2026-10-03
+
+### Novità
+- **Non consegnati**: nuova pagina (menu) con gli indirizzi che non hanno ricevuto **3 invii consecutivi** (nessuna consegna confermata, oppure bounce, anche arrivato dopo la consegna). L'analisi parte da sola a ogni avvio di campagna e una volta al giorno (se è attivo lo scheduler); c'è anche il pulsante «Analizza ora». Gli indirizzi segnalati sono **esclusi dagli invii** finché non vengono riabilitati. Vale per tutti i clienti, come la blacklist.
+- **Regola configurabile**: numero di invii consecutivi (3) e ore di attesa prima di giudicare un invio (48, perché gli eventi di consegna possono arrivare con ritardo) si cambiano dalla pagina. Si considerano solo gli invii successivi all'inizio del registro eventi (1.5.1), perché i precedenti non hanno dati di consegna affidabili.
+- **Analisi dei domini**: elenco dei domini più frequenti, **controllo DNS** (record MX: «MX ok», «Nessun MX», «Non riceve posta», «Dominio non risolvibile») eseguito a piccoli gruppi dal browser, e suggerimento sui **refusi evidenti** (`gmial.com`, `hotmal.com`, `.con`…).
+- **Azioni**: «Riabilita» (conta solo quello che succede dopo la riabilitazione) e «Blacklist» (blocco per tutti, con il motivo).
+- **Non consegnati per campagna**: dal report, il pulsante «Non consegnati (N)» apre l'elenco degli invii non consegnati di quella campagna con il **motivo** (bounce permanente o temporaneo con il messaggio del server, consegna ritardata, rifiutato, in attesa, nessun evento) e l'esportazione CSV.
+
+### Miglioramenti
+- **Registro eventi senza doppioni**: se SES pubblica lo stesso evento da due percorsi (Configuration Set e notifiche di identità, oppure due topic) viene salvato una sola volta e il doppione viene contato (`duplicates`). Per ogni evento si registra anche il formato (`eventType` / `notificationType`) e il topic di provenienza, utili a capire da dove arrivano.
+
+### Note
+- La regola dei 3 invii serve almeno 3 campagne allo stesso indirizzo dopo la 1.5.1.
+- I bounce permanenti continuano a portare l'iscritto a «bounced» come prima.
+- Non c'è «Elimina» tra le azioni: eliminare l'iscritto cancellerebbe anche lo storico dei suoi invii dai report. Per escluderlo definitivamente usa «Blacklist».
+
 ## [1.6.0] - 2026-10-02
 
 ### Novità
