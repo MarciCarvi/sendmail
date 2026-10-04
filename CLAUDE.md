@@ -5,6 +5,50 @@ App PHP/Laravel self-hosted per l'invio di newsletter via Amazon SES. Alternativ
 
 ---
 
+## Stato attuale (v1.8.0) — evoluzioni successive al progetto originale
+
+> Le sezioni più in basso descrivono il progetto **originale**. Dove sono in conflitto con questa sezione, vale questa.
+> Il `CHANGELOG.md` è la storia per l'utente; qui c'è l'architettura e le decisioni. **Aggiornare questa sezione a ogni release che cambia l'architettura.**
+
+### Rilascio e distribuzione (vincoli importanti)
+- Le installazioni cliente si aggiornano dal **pannello web**: `UpdateService` legge `releases/latest` di `MarciCarvi/sendmail` su GitHub, scarica lo zip del **tag**, copia i file (salta `.env`, `storage`, `public/build`, `install/.installed`) ed esegue `migrate` + svuota cache (config, view, route, OPcache).
+- **`vendor/` non è nel repository e l'updater non esegue composer**: non aggiungere dipendenze PHP nuove (non arriverebbero ai clienti). Preferire soluzioni senza librerie (HTML stampabile, CSV con `fputcsv`, JS da CDN).
+- **Flusso di release**: aggiornare `VERSION`, `RELEASE_DATE` (da `date +%F`), `CHANGELOG.md` (voce in cima) → commit → tag `vX.Y.Z` → `git push origin master --tags`. **Commit, push e tag li fa Claude**; la **Release GitHub** (necessaria all'updater) la crea l'utente a mano, perché `gh` non è installato. Fuori dai commit restano sempre `clear.php` e `docs/`.
+- Ogni cambio di schema richiede **due cose**: la migration (nome tabella `sm_` scritto a mano, non da config) **e** l'aggiornamento di `public/install/_wizard.php` (tabelle in `install_sql()` + nome migration in `install_migrations()`), altrimenti le nuove installazioni nascono senza.
+- `CHANGELOG.md` viaggia nello zip (rimosso l'`export-ignore` in `.gitattributes`): la finestra «Novità» dopo l'aggiornamento lo legge dal disco.
+- Fuso orario: l'app salva in **UTC** (`config/app.php`); i nuovi documenti (rapporto cliente, CSV) mostrano l'ora di Roma (`SM_REPORT_TIMEZONE`). Il resto della UI mostra ancora UTC.
+- Test fatti senza browser: script PHP con `DB::beginTransaction()` + `rollBack()`, SES finto (`SesService` esteso), firma SNS simulata con chiave di prova, Chrome headless per screenshot/PDF. Node locale è v10 (solo `--check` e test semplici).
+
+### Schema aggiunto dopo la 1.3.0
+| Tabella / colonna | Scopo |
+|---|---|
+| `sm_sender_profiles` (`name, from_name, from_email, reply_to, configuration_set, test_list_id`) | Profili di invio ("vesti"): mittente + Configuration Set SES per cliente |
+| `sm_campaigns.sender_profile_id`, `.editor_mode` (`visual`/`html`) | Profilo scelto; modalità editor fissata alla creazione |
+| `sm_lists.is_test` | Liste di test: mai destinatarie, niente iscrizione pubblica |
+| `sm_unsubscribes` (`email, sender_domain, sender_email, list_id, unsubscribed_at`; unique dominio+email) | Disiscrizione **per cliente** |
+| `sm_ses_events` (`sns_message_id, message_id, event_type, source, topic_arn, duplicates, dup_source, bounce_type/subtype, recipient, diagnostic, occurred_at, applied_at`) | Registro eventi SES |
+| `sm_campaign_sends.bounced_at, bounce_type, bounce_subtype, complained_at` | Esito di consegna per invio |
+| `sm_undelivered` (`email` unique, `domain, consecutive, evidence json, mx_status, suggestion, flagged_at, cleared_at`) | Indirizzi non consegnati per N invii |
+| `sm_subscribers.status` | L'enum ora include `unconfirmed` (migration di allineamento) |
+| Settings (`sm_settings`) | `undelivered_threshold` (3), `undelivered_grace_hours` (48), `report_brand_name`, `report_logo` |
+
+### Funzioni e decisioni
+- **Profili di invio**: obbligatori per inviare/programmare (le bozze no). `SesService::send(..., configurationSet)` usa quello del profilo, con fallback sul globale in Impostazioni. Il profilo ha una lista di test predefinita.
+- **Liste di test e invio test**: l'email di test singola e quella "alla lista di test" (max 10, ignora lo status tranne bounce/complaint/blacklist) **non** creano righe in `sm_campaign_sends`, non hanno tracking e non creano iscritti.
+- **Editor**: Unlayer (a blocchi) oppure **HTML puro** (CodeMirror 5 da CDN, HTML salvato così com'è). Da HTML puro non si torna ai blocchi. Nella modalità a blocchi la scheda HTML è in sola lettura.
+- **Disiscrizione per cliente**: la chiave è il **dominio di `lists.from_email`** (coincide col profilo). `Unsubscribe::record()` alla disiscrizione (anche manuale), `clear()` alla reiscrizione volontaria o conferma double opt-in. Esclusi in `CampaignSender::prepare()`, nell'import e nell'aggiunta manuale. La blacklist resta globale. Nessun recupero del pregresso.
+- **Link `/u/` non tracciati** dal click tracking.
+- **Invio browser-driven** (sempre senza queue worker): `process-batch` è protetto da `Cache::lock('campaign-batch-{id}')` (un solo lotto per campagna); `snapshot()` dà lo stato; il ciclo JS condiviso (`campaigns/_sending-driver.blade.php`, `sendingDriver()`) gira sia nella pagina campagna sia nel report, con retry/backoff e banner «Riprendi». Un destinatario che genera un'eccezione viene segnato `failed`; `ConnectException`/`CredentialsException` fermano il lotto. L'invio prosegue solo finché una delle due pagine è aperta; il cron serve solo alle campagne programmate (opzionale per il resto).
+- **Registro eventi SES**: il webhook accetta sia `eventType` (Configuration Set) sia `notificationType` (identità). Ogni evento viene **salvato prima** in `sm_ses_events` e poi applicato all'invio via `message_id` (`SesEvent::applyToSend`); se l'invio non ha ancora salvato il `message_id` resta in attesa (`applied_at` nullo) e lo applica `CampaignSender` (`applyPendingFor`) o il report (`reconcileCampaign`). Doppioni (stesso messaggio+tipo+orario) non duplicati ma contati. Pulizia a 180 giorni. **«Consegnato» = `delivered_at` e nessun `bounced_at`** (i bounce asincroni arrivano dopo la consegna). Gli invii precedenti alla 1.5.1 non hanno dati di consegna affidabili.
+- **Non consegnati** (globale, come la blacklist): `UndeliveredService::evaluate()` segnala chi ha gli **ultimi N invii** (default 3) `sent` senza consegna o con bounce, valutando solo invii più vecchi della finestra di attesa (48 h) e successivi al primo evento del registro. Gira in `prepare()`, ogni giorno (scheduler) e da «Analizza ora». Riabilitare imposta `cleared_at` (conta solo il dopo). Azioni: riabilita, blacklist (niente «elimina»: cancellerebbe lo storico invii). Controllo DNS/MX a lotti da browser e suggerimenti sui refusi di dominio.
+- **Import**: log temporaneo delle righe saltate (CSV in `storage/app/import-logs`, 24 h) con motivo (non valida, blacklist, dominio bloccato, disiscritto per il cliente, duplicata, già presente).
+- **Report e documenti** (`CampaignReportService`): `kpis()` alimenta sia il report del software sia il rapporto cliente (stesse cifre; percentuali sugli **inviati**). Documenti: **rapporto per il cliente** (pagina A4 stampabile/PDF: solo numeri, logo e nome dell'operatore, motivi di mancata consegna, link più cliccati; aperture solo come dato indicativo, click come metrica principale), **CSV destinatari** (`;` + BOM, per chi aggiorna i DB), **cerca destinatario** (cronologia). Logo predefinito `public/img/report-logo.png`, sostituibile in Impostazioni; credito «realizzato da SendMail» in viola `#8B5CF6`, riga testata arancione `#FFA400`.
+
+### Stato aperto / da verificare
+- **Doppioni SES**: la stessa consegna arrivava due volte da due topic SNS (`sendmail-feedback` e `sendmail_carvisiglia`) entrambi iscritti a `/webhook/ses`. L'utente ha tolto la sottoscrizione a uno. Alla prossima NL: `sm_ses_events.duplicates` deve restare 0; se no, `dup_source` indica formato e topic del secondo percorso. Prima di togliere le notifiche delle identità, ogni profilo (o il globale) deve avere un Configuration Set.
+- La prima campagna (4.123 invii) ha `delivered_at` incompleto (bug pre-1.5.1): non usarla come esempio per i clienti.
+- Release GitHub da creare a mano per i tag nuovi; l'ultima versione pubblicata è la **1.8.0**.
+
 ## Stack
 - **Laravel 12** — framework principale
 - **Blade** — template engine
