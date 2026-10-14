@@ -53,18 +53,14 @@ class SesWebhookController extends Controller
             $bounceType = $message['bounce']['bounceType'] ?? '';
             if ($bounceType === 'Permanent') {
                 foreach ($message['bounce']['bouncedRecipients'] ?? [] as $recipient) {
-                    Subscriber::where('email', strtolower($recipient['emailAddress']))
-                        ->where('status', 'subscribed')
-                        ->update(['status' => 'bounced']);
+                    $this->markSubscriber($recipient['emailAddress'] ?? null, 'bounced');
                 }
             }
         }
 
         if ($notifType === 'Complaint') {
             foreach ($message['complaint']['complainedRecipients'] ?? [] as $recipient) {
-                Subscriber::where('email', strtolower($recipient['emailAddress']))
-                    ->where('status', 'subscribed')
-                    ->update(['status' => 'complained']);
+                $this->markSubscriber($recipient['emailAddress'] ?? null, 'complained');
             }
         }
 
@@ -83,6 +79,19 @@ class SesWebhookController extends Controller
         }
 
         return response('OK');
+    }
+
+    /** Cambia lo status di tutte le righe iscritte con quell'indirizzo (in ogni lista). */
+    private function markSubscriber(?string $address, string $status): void
+    {
+        $email = SesEvent::normalizeAddress($address);
+        if ($email === '') {
+            return;
+        }
+
+        Subscriber::where('email', $email)
+            ->where('status', 'subscribed')
+            ->update(['status' => $status]);
     }
 
     /**

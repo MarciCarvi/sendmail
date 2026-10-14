@@ -190,6 +190,21 @@ class SesEvent extends Model
         return static::where('created_at', '<', now()->subDays($days))->delete();
     }
 
+    /**
+     * SES riporta il destinatario come è stato scritto in "Destination" ("Nome Cognome <a@b.it>" o "<a@b.it>",
+     * perché SesService invia con il nome). Per confrontarlo con sm_subscribers.email serve il solo indirizzo.
+     */
+    public static function normalizeAddress(?string $address): string
+    {
+        $address = trim((string) $address);
+
+        if (preg_match('/<([^<>]*)>\s*$/', $address, $m)) {
+            $address = $m[1];
+        }
+
+        return strtolower(trim($address));
+    }
+
     private static function parseTime(?string $value): ?Carbon
     {
         if (!$value) {

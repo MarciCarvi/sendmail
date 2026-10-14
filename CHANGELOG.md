@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.8.1] - 2026-10-14
+
+### Correzioni
+- **Bounce permanenti e reclami non cambiavano lo stato dell'iscritto**: quando SES respinge subito un indirizzo (casella inesistente o disattivata), riporta il destinatario nel formato `Nome Cognome <indirizzo>`; il sistema cercava quella stringa intera tra gli iscritti, non la trovava e l'iscritto restava «iscritto» (quindi riceveva anche le campagne successive). Ora viene letto il solo indirizzo, per i bounce permanenti e per i reclami.
+- **Allineamento dei dati già presenti**: con l'aggiornamento, gli iscritti che hanno già avuto un bounce permanente o un reclamo passano a «bounced» / «complained». Restano invariati quelli modificati dopo l'evento (per esempio riabilitati a mano) e quelli iscritti di nuovo in seguito.
+
+### Note
+- Nessuna modifica allo schema del database: l'aggiornamento esegue solo il riallineamento dei dati.
+
 ## [1.8.0] - 2026-10-03
 
 ### Novità
