@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.9.0] - 2026-10-14
+
+### Novità
+- **Stato per indirizzo**: bounce permanente e reclamo (spam) sono ora memorizzati **una volta per indirizzo**, con motivo e data, e valgono per tutte le liste (e per tutti i clienti, come la blacklist). Lo stato non va perso se cancelli una lista o degli iscritti.
+- **Import e aggiunta singola non scartano più nessun indirizzo noto**: l'indirizzo entra nella lista con il suo stato — *bounced* o *complained* se li ha già avuti altrove, *unsubscribed* se si era disiscritto per quel cliente — e quindi **non riceve le campagne**. Chi è in blacklist entra e si vede come oggi (⛔, riga barrata). Restano saltati solo: email non valide, domini bloccati, duplicati nel file e indirizzi già presenti nella stessa lista.
+- **Log dell'import** più completo: oltre alle righe saltate riporta le righe importate con uno stato particolare (colonna «Esito»), e il messaggio finale ne dà il conteggio.
+- **Riabilita ovunque**: cambiando a mano lo stato di una riga in «subscribed» (modifica singola o azione di massa) l'indirizzo torna attivo in **tutte** le liste; allo stesso modo, impostare «bounced» o «complained» vale per tutte le liste. In *Report → Cerca destinatario* c'è il pulsante **Riabilita ovunque**, che funziona anche se l'indirizzo non è più in nessuna lista. La riabilitazione non tocca i disiscritti né la blacklist.
+- **Reiscrizione dal form pubblico**: riabilita l'indirizzo ovunque. Con il double opt-in succede alla conferma, che dimostra che la casella funziona.
+- **Perché un indirizzo ha quello stato**: nell'elenco iscritti il badge di stato (bounced, complained, unsubscribed) porta alla cronologia dell'indirizzo, con il motivo nel suggerimento; il badge ⛔ della blacklist mostra motivo e data. *Cerca destinatario* mostra lo stato dell'indirizzo (motivo e data) e i dettagli della blacklist.
+
+### Note
+- Con l'aggiornamento la nuova tabella viene riempita dagli stati *bounced* e *complained* già presenti; le iscrizioni esistenti non vengono modificate. Una riga rimasta «iscritta» prima di questa versione, con lo stesso indirizzo già rimbalzato altrove, non viene corretta da sola: usa *Riabilita ovunque* o imposta lo stato a mano.
+- Gli indirizzi non vengono esclusi dagli invii in base allo storico dei bounce, ma in base allo stato della riga: chi si reiscrive di sua volontà torna a ricevere le campagne.
+
 ## [1.8.1] - 2026-10-14
 
 ### Correzioni

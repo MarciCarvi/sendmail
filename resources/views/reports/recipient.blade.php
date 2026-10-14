@@ -19,16 +19,45 @@
         <div class="card mb-4">
             <div class="card-header fw-semibold">{{ $t['email'] }}</div>
             <div class="card-body">
-                @if($t['subscriptions']->isEmpty() && empty($t['items']))
+                @if($t['subscriptions']->isEmpty() && empty($t['items']) && !$t['address_state'] && !$t['blacklisted'])
                     <p class="text-muted mb-0">Nessuna iscrizione né invio trovati per questo indirizzo.</p>
                 @else
                     <div class="d-flex flex-wrap gap-2 mb-3">
+                        @if($t['address_state'])
+                            <span class="badge text-bg-{{ $t['address_state']->status === 'complained' ? 'danger' : 'warning' }}">Indirizzo {{ $t['address_state']->status }}</span>
+                        @endif
                         @if($t['blacklisted'])<span class="badge text-bg-danger">In blacklist</span>@endif
                         @if($t['undelivered'])<span class="badge text-bg-warning">Segnalato come non consegnato</span>@endif
                         @foreach($t['unsubscribes'] as $u)
                             <span class="badge text-bg-secondary">Disiscritto per {{ $u->sender_domain }}</span>
                         @endforeach
                     </div>
+                    @if($t['address_state'])
+                        <p class="small mb-2">
+                            <strong>Stato dell'indirizzo ({{ $t['address_state']->status }})</strong>
+                            @if($t['address_state_at']) dal {{ $t['address_state_at']->format('d/m/Y H:i') }} @endif
+                            — vale per tutte le liste e per tutti i clienti.
+                            @if($t['address_state']->reason)<br><span class="text-muted">{{ $t['address_state']->reason }}</span>@endif
+                        </p>
+                    @endif
+                    @if($t['blacklisted'])
+                        <p class="small mb-2">
+                            <strong>In blacklist</strong>
+                            @if($t['blacklist_at']) dal {{ $t['blacklist_at']->format('d/m/Y H:i') }} @endif
+                            @if($t['blacklist_entry']->reason)<br><span class="text-muted">{{ $t['blacklist_entry']->reason }}</span>@endif
+                            <a href="{{ route('blacklist.index') }}" class="ms-1">Vai alla blacklist</a>
+                        </p>
+                    @endif
+                    @php $needsReinstate = $t['address_state'] || $t['subscriptions']->whereIn('status', ['bounced', 'complained'])->isNotEmpty(); @endphp
+                    @if($needsReinstate)
+                        <form method="POST" action="{{ route('address-status.reinstate') }}" class="mb-3"
+                              onsubmit="return confirm('Riabilitare {{ $t['email'] }} in tutte le liste? Tornerà a ricevere le campagne.')">
+                            @csrf
+                            <input type="hidden" name="email" value="{{ $t['email'] }}">
+                            <button class="btn btn-outline-primary btn-sm">Riabilita ovunque</button>
+                            <span class="form-text ms-2">Rimette «subscribed» le iscrizioni bounced/complained. Non tocca disiscritti e blacklist.</span>
+                        </form>
+                    @endif
                     @if($t['subscriptions']->isNotEmpty())
                         <div class="small fw-semibold mb-1">Iscrizioni</div>
                         <ul class="small mb-0">

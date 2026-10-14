@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
+use App\Models\AddressStatus;
 use App\Models\SesEvent;
-use App\Models\Subscriber;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -52,15 +53,24 @@ class SesWebhookController extends Controller
         if ($notifType === 'Bounce') {
             $bounceType = $message['bounce']['bounceType'] ?? '';
             if ($bounceType === 'Permanent') {
+                $type = trim($bounceType . ' / ' . ($message['bounce']['bounceSubType'] ?? ''), ' /');
+                $at   = SesEvent::parseTime($message['bounce']['timestamp'] ?? null);
+
                 foreach ($message['bounce']['bouncedRecipients'] ?? [] as $recipient) {
-                    $this->markSubscriber($recipient['emailAddress'] ?? null, 'bounced');
+                    $diagnostic = $recipient['diagnosticCode'] ?? null;
+                    $this->markAddress($recipient['emailAddress'] ?? null, AddressStatus::BOUNCED,
+                        "Bounce {$type}" . ($diagnostic ? ": {$diagnostic}" : ''), $at);
                 }
             }
         }
 
         if ($notifType === 'Complaint') {
+            $feedback = $message['complaint']['complaintFeedbackType'] ?? null;
+            $at       = SesEvent::parseTime($message['complaint']['timestamp'] ?? null);
+
             foreach ($message['complaint']['complainedRecipients'] ?? [] as $recipient) {
-                $this->markSubscriber($recipient['emailAddress'] ?? null, 'complained');
+                $this->markAddress($recipient['emailAddress'] ?? null, AddressStatus::COMPLAINED,
+                    'Segnalata come spam' . ($feedback ? " ({$feedback})" : ''), $at);
             }
         }
 
@@ -81,17 +91,15 @@ class SesWebhookController extends Controller
         return response('OK');
     }
 
-    /** Cambia lo status di tutte le righe iscritte con quell'indirizzo (in ogni lista). */
-    private function markSubscriber(?string $address, string $status): void
+    /** Registra lo stato dell'indirizzo (vale per tutte le liste) e lo applica alle righe iscritto esistenti. */
+    private function markAddress(?string $address, string $status, string $reason, ?Carbon $at): void
     {
         $email = SesEvent::normalizeAddress($address);
         if ($email === '') {
             return;
         }
 
-        Subscriber::where('email', $email)
-            ->where('status', 'subscribed')
-            ->update(['status' => $status]);
+        AddressStatus::mark($email, $status, $reason, $at);
     }
 
     /**

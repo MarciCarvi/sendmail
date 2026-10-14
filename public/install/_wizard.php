@@ -626,6 +626,13 @@ function install_sql(string $p): array
           PRIMARY KEY (`id`), UNIQUE KEY `{$p}undelivered_email_unique` (`email`),
           KEY `{$p}undelivered_domain_index` (`domain`)
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
+        ["{$p}address_status", "CREATE TABLE IF NOT EXISTS `{$p}address_status` (
+          `id` bigint unsigned NOT NULL AUTO_INCREMENT, `email` varchar(255) NOT NULL,
+          `status` varchar(20) NOT NULL, `reason` varchar(500) DEFAULT NULL,
+          `occurred_at` timestamp NULL DEFAULT NULL,
+          `created_at` timestamp NULL DEFAULT NULL, `updated_at` timestamp NULL DEFAULT NULL,
+          PRIMARY KEY (`id`), UNIQUE KEY `{$p}address_status_email_unique` (`email`)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
         ["{$p}unlayer_blocks", "CREATE TABLE IF NOT EXISTS `{$p}unlayer_blocks` (
           `id` bigint unsigned NOT NULL AUTO_INCREMENT, `name` varchar(255) NOT NULL,
           `body` json NOT NULL, `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -659,6 +666,8 @@ function install_migrations(): array
         '2026_10_02_090000_create_sm_unsubscribes_table',
         '2026_10_03_090000_create_sm_ses_events_table',
         '2026_10_03_100000_create_sm_undelivered_table',
+        '2026_10_14_090000_realign_bounced_and_complained_subscribers',
+        '2026_10_14_100000_create_sm_address_status_table',
     ];
 }
 

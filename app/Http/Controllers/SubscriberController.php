@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AddressStatus;
 use App\Models\Blacklist;
 use App\Models\MailList;
 use App\Models\Subscriber;
@@ -32,11 +33,14 @@ class SubscriberController extends Controller
 
         $subscribers = $query->paginate(50)->withQueryString();
 
-        $blacklistedEmails = Blacklist::whereIn('email',
-            $subscribers->pluck('email')->map('strtolower')
-        )->pluck('email')->flip()->toArray();
+        $emails = $subscribers->pluck('email')->map('strtolower');
 
-        return view('subscribers.index', compact('list', 'subscribers', 'blacklistedEmails'));
+        // [email => voce]: la voce porta motivo e data da mostrare accanto al badge
+        $blacklistedEmails = Blacklist::whereIn('email', $emails)->get()
+            ->keyBy(fn($b) => strtolower($b->email));
+        $addressStates = AddressStatus::whereIn('email', $emails)->get()->keyBy('email');
+
+        return view('subscribers.index', compact('list', 'subscribers', 'blacklistedEmails', 'addressStates'));
     }
 
     public function store(Request $request, MailList $list)
@@ -48,16 +52,8 @@ class SubscriberController extends Controller
             'company'    => 'nullable|string|max:150',
         ]);
 
-        if (Blacklist::isBlacklisted($request->email)) {
-            return back()->with('error', 'Email in blacklist. Non può essere aggiunta.');
-        }
-
         if (Blacklist::isDomainBlocked($request->email)) {
             return back()->with('error', 'Dominio bloccato. Non può essere aggiunto.');
-        }
-
-        if (isset(Unsubscribe::suppressedFor($list->from_email)[strtolower($request->email)])) {
-            return back()->with('error', 'Questa email si è disiscritta per questo cliente. Rimuovila dall\'elenco Disiscritti per poterla aggiungere.');
         }
 
         $existing = $list->subscribers()->where('email', $request->email)->first();
@@ -66,9 +62,71 @@ class SubscriberController extends Controller
             return back()->with('error', 'Email già presente in questa lista.');
         }
 
-        $list->subscribers()->create($request->only('email', 'first_name', 'last_name', 'company'));
+        // L'indirizzo entra sempre nella lista, con lo stato che ha già (bounced, complained, disiscritto per il
+        // cliente); se è in blacklist il badge si vede nell'elenco e non riceverà campagne.
+        [$status, $unsubscribedAt] = $this->initialStatus(
+            $request->email,
+            AddressStatus::map(),
+            Unsubscribe::datesFor($list->from_email)
+        );
 
-        return back()->with('success', 'Iscritto aggiunto.');
+        $list->subscribers()->create($request->only('email', 'first_name', 'last_name', 'company') + [
+            'status'          => $status,
+            'unsubscribed_at' => $unsubscribedAt,
+        ]);
+
+        $notes = match ($status) {
+            'bounced'      => 'con stato «bounced»: l\'indirizzo risulta rimbalzato',
+            'complained'   => 'con stato «complained»: l\'indirizzo ha segnalato spam',
+            'unsubscribed' => 'con stato «unsubscribed»: si era disiscritto per questo cliente',
+            default        => null,
+        };
+
+        $message = 'Iscritto aggiunto' . ($notes ? " {$notes} e non riceverà le campagne (dettagli in Report → Cerca destinatario)" : '') . '.';
+
+        if (Blacklist::isBlacklisted($request->email)) {
+            $message .= ' L\'indirizzo è in blacklist: non riceverà le campagne.';
+        }
+
+        return back()->with('success', $message);
+    }
+
+    /**
+     * Stato con cui nasce una riga: bounce/reclamo dell'indirizzo (valgono per ogni lista), altrimenti disiscritto per
+     * il cliente della lista, altrimenti iscritto. La blacklist non è uno stato: si vede dal badge.
+     *
+     * @return array{0: string, 1: ?\DateTimeInterface}
+     */
+    private function initialStatus(string $email, array $addressStates, array $unsubscribedDates): array
+    {
+        $key = strtolower($email);
+
+        if (isset($addressStates[$key])) {
+            return [$addressStates[$key], null];
+        }
+
+        if (isset($unsubscribedDates[$key])) {
+            return ['unsubscribed', $unsubscribedDates[$key]];
+        }
+
+        return ['subscribed', null];
+    }
+
+    /**
+     * Cambio di stato fatto a mano: vale per l'indirizzo, quindi per tutte le liste (vale l'ultimo stato impostato).
+     * Rimettere «subscribed» riabilita l'indirizzo ovunque; bounced/complained lo segnano ovunque.
+     */
+    private function syncAddressStatus(Subscriber $subscriber, string $previousStatus): void
+    {
+        if ($subscriber->status === $previousStatus) {
+            return;
+        }
+
+        match ($subscriber->status) {
+            'subscribed'            => AddressStatus::reinstate($subscriber->email),
+            'bounced', 'complained' => AddressStatus::mark($subscriber->email, $subscriber->status, 'Impostato a mano', now(), force: true),
+            default                 => null,
+        };
     }
 
     public function update(Request $request, MailList $list, Subscriber $subscriber)
@@ -94,6 +152,8 @@ class SubscriberController extends Controller
         } elseif ($previousStatus === 'unsubscribed' && $subscriber->status === 'subscribed') {
             Unsubscribe::clear($subscriber);
         }
+
+        $this->syncAddressStatus($subscriber, $previousStatus);
 
         return back()->with('success', 'Iscritto aggiornato.');
     }
@@ -142,8 +202,11 @@ class SubscriberController extends Controller
         $hasHeader = in_array('email', $header);
 
         $imported = 0;
-        $unsubscribedForClient = Unsubscribe::suppressedFor($list->from_email);
+        $unsubscribedDates = Unsubscribe::datesFor($list->from_email);
+        $addressStates = AddressStatus::map();
         $skippedRows = [];   // [riga, email, motivo] per il log temporaneo
+        $noteRows = [];      // [riga, email, esito]: importate ma con uno stato particolare
+        $withState = ['bounced' => 0, 'complained' => 0, 'unsubscribed' => 0, 'blacklist' => 0];
         $seen = [];
 
         $rows = $hasHeader ? array_slice($lines, 1) : $lines;
@@ -172,12 +235,8 @@ class SubscriberController extends Controller
             $reason = null;
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $reason = 'Email non valida';
-            } elseif (Blacklist::isBlacklisted($email)) {
-                $reason = 'In blacklist';
             } elseif (Blacklist::isDomainBlocked($email)) {
                 $reason = 'Dominio bloccato';
-            } elseif (isset($unsubscribedForClient[strtolower($email)])) {
-                $reason = 'Disiscritto per questo cliente';
             } elseif (isset($seen[strtolower($email)])) {
                 $reason = 'Duplicata nel file';
             } elseif ($list->subscribers()->where('email', $email)->exists()) {
@@ -191,29 +250,63 @@ class SubscriberController extends Controller
 
             $seen[strtolower($email)] = true;
 
+            // Ogni indirizzo entra con lo stato che ha già; la blacklist si vede dal badge e blocca l'invio
+            [$status, $unsubscribedAt] = $this->initialStatus($email, $addressStates, $unsubscribedDates);
+
             $list->subscribers()->create([
-                'email'      => $email,
-                'first_name' => trim($data['first_name'] ?? $data['nome'] ?? ''),
-                'last_name'  => trim($data['last_name'] ?? $data['cognome'] ?? ''),
-                'company'    => trim($data['company'] ?? $data['azienda'] ?? ''),
+                'email'           => $email,
+                'first_name'      => trim($data['first_name'] ?? $data['nome'] ?? ''),
+                'last_name'       => trim($data['last_name'] ?? $data['cognome'] ?? ''),
+                'company'         => trim($data['company'] ?? $data['azienda'] ?? ''),
+                'status'          => $status,
+                'unsubscribed_at' => $unsubscribedAt,
             ]);
 
             $imported++;
+
+            if ($status !== 'subscribed') {
+                $withState[$status]++;
+                $noteRows[] = [$rowNumber, $email, match ($status) {
+                    'bounced'    => 'Importata come bounced (rimbalzata in precedenza)',
+                    'complained' => 'Importata come complained (segnalata come spam in precedenza)',
+                    default      => 'Importata come unsubscribed (disiscritta per questo cliente)',
+                }];
+            }
+
+            if (Blacklist::isBlacklisted($email)) {
+                $withState['blacklist']++;
+                $noteRows[] = [$rowNumber, $email, 'Importata ma in blacklist (non riceverà campagne)'];
+            }
         }
 
         $skipped = count($skippedRows);
-        $response = back()->with('success', "Import completato: {$imported} aggiunti, {$skipped} saltati.");
+        $message = "Import completato: {$imported} aggiunti, {$skipped} saltati.";
 
-        if ($skipped > 0) {
-            $response->with('import_log', $this->storeImportLog($skippedRows));
+        $labels = ['bounced' => 'bounced', 'complained' => 'complained', 'unsubscribed' => 'unsubscribed', 'blacklist' => 'in blacklist'];
+        $stateParts = [];
+        foreach ($withState as $key => $n) {
+            if ($n > 0) {
+                $stateParts[] = "{$n} {$labels[$key]}";
+            }
+        }
+        if ($stateParts) {
+            $message .= ' Tra gli aggiunti, con uno stato che esclude l\'invio: ' . implode(', ', $stateParts) . '.';
+        }
+
+        $response = back()->with('success', $message);
+
+        $logRows = array_merge($skippedRows, $noteRows);
+        if ($logRows) {
+            usort($logRows, fn($a, $b) => $a[0] <=> $b[0]);
+            $response->with('import_log', $this->storeImportLog($logRows));
         }
 
         return $response;
     }
 
     /**
-     * Log temporaneo delle righe saltate: CSV in storage/app/import-logs (24 ore)
-     * più un riepilogo e le prime righe da mostrare a schermo.
+     * Log temporaneo dell'import (righe saltate e righe importate con uno stato particolare): CSV in
+     * storage/app/import-logs (24 ore) più un riepilogo e le prime righe da mostrare a schermo.
      */
     private function storeImportLog(array $skippedRows): array
     {
@@ -229,7 +322,7 @@ class SubscriberController extends Controller
 
         $token = Str::random(40);
         $handle = fopen("{$dir}/{$token}.csv", 'w');
-        fputcsv($handle, ['riga', 'email', 'motivo']);
+        fputcsv($handle, ['riga', 'email', 'esito']);
         foreach ($skippedRows as [$row, $email, $reason]) {
             fputcsv($handle, [$row, $this->csvSafe($email), $reason]);
         }
@@ -257,7 +350,7 @@ class SubscriberController extends Controller
             return back()->with('error', 'Il log dell\'import è scaduto o non esiste.');
         }
 
-        return response()->download($path, "import-saltati-lista-{$list->id}.csv", ['Content-Type' => 'text/csv']);
+        return response()->download($path, "import-log-lista-{$list->id}.csv", ['Content-Type' => 'text/csv']);
     }
 
     public function export(MailList $list): StreamedResponse
@@ -337,12 +430,15 @@ class SubscriberController extends Controller
         };
 
         foreach ($statusSubscribers as $sub) {
+            $previousStatus = $sub->status;
             $sub->refresh();
             if ($request->new_status === 'unsubscribed') {
                 Unsubscribe::record($sub);
             } elseif ($request->new_status === 'subscribed') {
                 Unsubscribe::clear($sub);
             }
+
+            $this->syncAddressStatus($sub, $previousStatus);
         }
 
         $label = match ($request->action) {

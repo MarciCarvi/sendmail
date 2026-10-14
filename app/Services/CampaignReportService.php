@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AddressStatus;
 use App\Models\Blacklist;
 use App\Models\Campaign;
 use App\Models\CampaignClick;
@@ -363,10 +364,17 @@ class CampaignReportService
             ];
         })->all();
 
+        $addressState = $email !== '' ? AddressStatus::where('email', $email)->first() : null;
+        $blacklistEntry = $email !== '' ? Blacklist::where('email', $email)->first() : null;
+
         return [
             'email'         => $email,
             'subscriptions' => $subscribers,
-            'blacklisted'   => $email !== '' && Blacklist::isBlacklisted($email),
+            'address_state' => $addressState,
+            'address_state_at' => $this->local($addressState?->occurred_at),
+            'blacklisted'   => $blacklistEntry !== null,
+            'blacklist_entry' => $blacklistEntry,
+            'blacklist_at'  => $this->local($blacklistEntry?->created_at),
             'undelivered'   => Undelivered::active()->where('email', $email)->first(),
             'unsubscribes'  => $email !== '' ? Unsubscribe::where('email', $email)->get() : collect(),
             'items'         => $items,

@@ -61,6 +61,19 @@ class Unsubscribe extends Model
             ->delete();
     }
 
+    /** Email disiscritte per il dominio di questo mittente con la data, come array [email => Carbon] (per l'import). */
+    public static function datesFor(?string $senderEmail): array
+    {
+        $domain = static::domainOf($senderEmail);
+        if ($domain === '') {
+            return [];
+        }
+
+        return static::where('sender_domain', $domain)->pluck('unsubscribed_at', 'email')
+            ->mapWithKeys(fn($at, $email) => [strtolower($email) => $at])
+            ->all();
+    }
+
     /** Email disiscritte per il dominio di questo mittente, come array [email => true]. */
     public static function suppressedFor(?string $senderEmail): array
     {

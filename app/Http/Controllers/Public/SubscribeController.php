@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
+use App\Models\AddressStatus;
 use App\Models\Blacklist;
 use App\Models\MailList;
 use App\Models\Setting;
@@ -75,10 +76,11 @@ class SubscribeController extends Controller
             ]);
         }
 
-        // Nuova iscrizione volontaria: non è più disiscritto per questo cliente
-        // (con il double opt-in succede alla conferma)
+        // Nuova iscrizione volontaria: non è più disiscritto per questo cliente e l'indirizzo è di nuovo valido
+        // (bounce/reclamo tolti ovunque). Con il double opt-in succede alla conferma.
         if (!$list->double_optin) {
             Unsubscribe::clear($subscriber);
+            AddressStatus::reinstate($subscriber->email);
         }
 
         if ($list->double_optin) {

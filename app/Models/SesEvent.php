@@ -205,7 +205,7 @@ class SesEvent extends Model
         return strtolower(trim($address));
     }
 
-    private static function parseTime(?string $value): ?Carbon
+    public static function parseTime(?string $value): ?Carbon
     {
         if (!$value) {
             return null;

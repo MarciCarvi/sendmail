@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AddressStatusController;
 use App\Http\Controllers\BlacklistController;
 use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\DashboardController;
@@ -79,6 +80,9 @@ Route::middleware(['auth', 'verified', 'check.license'])->group(function () {
     Route::post('/undelivered/check-mx', [UndeliveredController::class, 'checkMx'])->name('undelivered.check-mx');
     Route::post('/undelivered/{undelivered}/reinstate', [UndeliveredController::class, 'reinstate'])->name('undelivered.reinstate');
     Route::post('/undelivered/{undelivered}/blacklist', [UndeliveredController::class, 'blacklist'])->name('undelivered.blacklist');
+
+    // Stato per indirizzo (bounced/complained): riabilitazione ovunque
+    Route::post('/address-status/reinstate', [AddressStatusController::class, 'reinstate'])->name('address-status.reinstate');
 
     // Blacklist
     Route::get('/blacklist', [BlacklistController::class, 'index'])->name('blacklist.index');

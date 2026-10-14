@@ -19,8 +19,8 @@
         <div class="card border-warning mb-3">
             <div class="card-body">
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                    <strong>{{ number_format($importLog['total']) }} righe saltate nell'import</strong>
-                    <span class="text-muted small">(log temporaneo, disponibile per 24 ore)</span>
+                    <strong>{{ number_format($importLog['total']) }} segnalazioni nell'import</strong>
+                    <span class="text-muted small">(righe saltate o importate con uno stato particolare; log temporaneo, disponibile per 24 ore)</span>
                     <a href="{{ route('lists.subscribers.import-log', [$list, $importLog['token']]) }}"
                        class="btn btn-outline-secondary btn-sm ms-auto">Scarica CSV completo</a>
                     <button class="btn btn-outline-secondary btn-sm" type="button"
@@ -34,7 +34,7 @@
                 <div class="collapse mt-3" id="importLogRows">
                     <div class="table-responsive" style="max-height: 320px; overflow-y: auto;">
                         <table class="table table-sm mb-0">
-                            <thead class="table-light"><tr><th>Riga</th><th>Email</th><th>Motivo</th></tr></thead>
+                            <thead class="table-light"><tr><th>Riga</th><th>Email</th><th>Esito</th></tr></thead>
                             <tbody>
                                 @foreach($importLog['rows'] as [$row, $email, $reason])
                                     <tr><td>{{ $row }}</td><td>{{ $email !== '' ? $email : '—' }}</td><td>{{ $reason }}</td></tr>
@@ -148,7 +148,9 @@
                                 <td>
                                     @if($isBlacklisted)
                                         <span class="text-decoration-line-through text-muted">{{ $subscriber->email }}</span>
-                                        <span class="badge bg-dark ms-1" title="In blacklist">⛔</span>
+                                        @php $bl = $blacklistedEmails[strtolower($subscriber->email)]; @endphp
+                                        <span class="badge bg-dark ms-1"
+                                              title="In blacklist{{ $bl->created_at ? ' dal ' . $bl->created_at->format('d/m/Y') : '' }}{{ $bl->reason ? ': ' . $bl->reason : '' }}">⛔</span>
                                     @else
                                         {{ $subscriber->email }}
                                     @endif
@@ -164,7 +166,19 @@
                                         'complained'   => 'danger',
                                         default        => 'secondary',
                                     }; @endphp
-                                    <span class="badge bg-{{ $badge }}">{{ $subscriber->status }}</span>
+                                    @php
+                                        $addr = $addressStates[strtolower($subscriber->email)] ?? null;
+                                        $why = $addr
+                                            ? trim(($addr->reason ?? '') . ($addr->occurred_at ? ' (' . $addr->occurred_at->format('d/m/Y') . ')' : ''))
+                                            : '';
+                                    @endphp
+                                    @if($subscriber->status !== 'subscribed')
+                                        <a href="{{ route('reports.recipient', ['email' => $subscriber->email]) }}"
+                                           class="badge bg-{{ $badge }} text-decoration-none"
+                                           title="{{ $why !== '' ? $why . ' — ' : '' }}Apri la cronologia dell'indirizzo">{{ $subscriber->status }}</a>
+                                    @else
+                                        <span class="badge bg-{{ $badge }}">{{ $subscriber->status }}</span>
+                                    @endif
                                 </td>
                                 <td class="small text-muted">{{ $subscriber->subscribed_at?->format('d/m/Y') }}</td>
                                 <td class="text-end">
