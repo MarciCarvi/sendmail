@@ -668,6 +668,7 @@ function install_migrations(): array
         '2026_10_03_100000_create_sm_undelivered_table',
         '2026_10_14_090000_realign_bounced_and_complained_subscribers',
         '2026_10_14_100000_create_sm_address_status_table',
+        '2026_10_15_090000_move_uploads_to_public_uploads',
     ];
 }
 

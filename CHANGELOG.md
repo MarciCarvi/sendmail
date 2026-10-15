@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.9.1] - 2026-10-15
+
+### Correzioni
+- **Le immagini caricate in «Immagini» non si vedevano**: comparivano nell'elenco ma senza anteprima, e il loro indirizzo dava errore 404. Le immagini venivano salvate in una cartella raggiungibile dal web solo tramite un collegamento (`public/storage`) che su molti hosting non esiste, o che l'FTP trasforma in una copia ferma al momento del caricamento. Ora le immagini vanno in `public/uploads`, servita direttamente dal server web, e funzionano su qualsiasi hosting.
+- **Anteprima del logo in Impostazioni → Marchio dei rapporti**: stesso problema, stessa correzione.
+
+### Note
+- Con l'aggiornamento le immagini già caricate (e il logo dei rapporti) vengono spostate in `public/uploads`. Gli indirizzi `/storage/...` già scritti nelle newsletter continuano a funzionare finché il file esiste; per le nuove newsletter usa il pulsante «Copia URL», che ora fornisce l'indirizzo `/uploads/...`.
+- Se carichi un'immagine a mano con l'FTP o il gestore file dell'hosting, mettila in `public/uploads/campaign-images/` e l'indirizzo sarà `…/uploads/campaign-images/nome.jpg`.
+- Se il tuo hosting ha il file `.htaccess` nella cartella principale, l'aggiornamento lo sostituisce: se l'hai modificato a mano, aggiungi `uploads` all'elenco `build|img|favicon|storage`.
+
 ## [1.9.0] - 2026-10-14
 
 ### Novità

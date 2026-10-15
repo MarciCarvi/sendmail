@@ -86,14 +86,14 @@ class SettingsController extends Controller
 
         if ($request->boolean('remove_logo') || $request->hasFile('report_logo')) {
             if ($old = Setting::get('report_logo')) {
-                Storage::disk('public')->delete($old);
+                Storage::disk('uploads')->delete($old);
             }
             Setting::set('report_logo', null);
         }
 
         if ($request->hasFile('report_logo')) {
             $file = $request->file('report_logo');
-            $path = $file->storeAs('branding', 'report-logo-' . time() . '.' . strtolower($file->getClientOriginalExtension()), 'public');
+            $path = $file->storeAs('branding', 'report-logo-' . time() . '.' . strtolower($file->getClientOriginalExtension()), 'uploads');
             Setting::set('report_logo', $path);
         }
 

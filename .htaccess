@@ -2,7 +2,7 @@
     RewriteEngine on
 
     # Asset statici: mappa i prefissi noti verso public/ (public/.htaccess li serve come file)
-    RewriteRule ^(build|img|favicon|storage)(/.*)?$ public/$1$2 [L,QSA]
+    RewriteRule ^(build|img|favicon|storage|uploads)(/.*)?$ public/$1$2 [L,QSA]
     RewriteRule ^(embed\.js|favicon\.ico|robots\.txt)$ public/$1 [L]
 
     # Tutto il resto → Laravel (inclusi path con /public/ come webhook SNS)

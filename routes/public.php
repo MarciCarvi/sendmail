@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Public\ConfirmController;
+use App\Http\Controllers\Public\LegacyStorageController;
 use App\Http\Controllers\Public\SubscribeController;
 use App\Http\Controllers\Public\SesWebhookController;
 use App\Http\Controllers\Public\TrackClickController;
@@ -20,6 +21,12 @@ Route::middleware('throttle:30,1')->group(function () {
     Route::post('/u/{token}', [UnsubscribeController::class, 'confirm'])->name('unsubscribe.confirm');
     Route::get('/c/{token}', ConfirmController::class)->name('confirm.optin');
 });
+
+// Immagini con il vecchio indirizzo /storage/... (vedi LegacyStorageController).
+// Solo nome file semplice nelle due cartelle note: nessun percorso libero.
+Route::get('/storage/{folder}/{file}', LegacyStorageController::class)
+    ->where(['folder' => 'campaign-images|branding', 'file' => '[A-Za-z0-9._-]+'])
+    ->middleware('throttle:240,1')->name('storage.legacy');
 
 // SES Webhook — signature-validated in the controller, left unthrottled so
 // bursts of legitimate SNS notifications are never dropped.

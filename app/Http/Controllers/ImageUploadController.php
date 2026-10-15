@@ -9,12 +9,12 @@ class ImageUploadController extends Controller
 {
     public function index()
     {
-        $files = Storage::disk('public')->files('campaign-images');
+        $files = Storage::disk('uploads')->files('campaign-images');
 
         $images = collect($files)
-            ->sortByDesc(fn($f) => Storage::disk('public')->lastModified($f))
+            ->sortByDesc(fn($f) => Storage::disk('uploads')->lastModified($f))
             ->map(fn($path) => [
-                'url'  => asset('storage/' . $path),
+                'url'  => asset('uploads/' . $path),
                 'name' => basename($path),
             ])
             ->values();
@@ -39,15 +39,15 @@ class ImageUploadController extends Controller
 
         $filename = $slug . '.' . $ext;
         $counter  = 1;
-        while (Storage::disk('public')->exists('campaign-images/' . $filename)) {
+        while (Storage::disk('uploads')->exists('campaign-images/' . $filename)) {
             $filename = $slug . '-' . $counter . '.' . $ext;
             $counter++;
         }
 
-        $path = $request->file('file')->storeAs('campaign-images', $filename, 'public');
+        $path = $request->file('file')->storeAs('campaign-images', $filename, 'uploads');
 
         return response()->json([
-            'url'  => asset('storage/' . $path),
+            'url'  => asset('uploads/' . $path),
             'name' => basename($path),
         ]);
     }
@@ -56,8 +56,8 @@ class ImageUploadController extends Controller
     {
         $path = 'campaign-images/' . basename($name);
 
-        if (Storage::disk('public')->exists($path)) {
-            Storage::disk('public')->delete($path);
+        if (Storage::disk('uploads')->exists($path)) {
+            Storage::disk('uploads')->delete($path);
         }
 
         return response()->json(['success' => true]);

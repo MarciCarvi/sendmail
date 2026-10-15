@@ -40,7 +40,7 @@ class CampaignReportService
 
         $logo = null;
         $path = Setting::get('report_logo');
-        if ($path && Storage::disk('public')->exists($path)) {
+        if ($path && Storage::disk('uploads')->exists($path)) {
             $mime = match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
                 'png'         => 'image/png',
                 'jpg', 'jpeg' => 'image/jpeg',
@@ -48,7 +48,7 @@ class CampaignReportService
                 default       => null,
             };
             if ($mime) {
-                $logo = 'data:' . $mime . ';base64,' . base64_encode(Storage::disk('public')->get($path));
+                $logo = 'data:' . $mime . ';base64,' . base64_encode(Storage::disk('uploads')->get($path));
             }
         }
 

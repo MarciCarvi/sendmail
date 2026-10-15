@@ -33,7 +33,9 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // false: la rotta /storage/{path} del framework (solo URL firmati) occuperebbe
+            // l'indirizzo usato da LegacyStorageController per i vecchi link delle immagini
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],
@@ -42,6 +44,18 @@ return [
             'driver' => 'local',
             'root' => storage_path('app/public'),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
+            'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
+        // Immagini caricate dall'utente (libreria NL, logo dei rapporti). Vivono in public/uploads,
+        // servite direttamente dal web server: non dipendono dal link simbolico public/storage,
+        // che su molti hosting non si crea o si rompe con l'FTP.
+        'uploads' => [
+            'driver' => 'local',
+            'root' => public_path('uploads'),
+            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/uploads',
             'visibility' => 'public',
             'throw' => false,
             'report' => false,

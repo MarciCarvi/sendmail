@@ -239,7 +239,7 @@
                             <label class="form-label">Logo <span class="text-muted">(PNG, JPG o WebP, max 1 MB)</span></label>
                             @if(!empty($settings['report_logo']))
                                 <div class="mb-2 d-flex align-items-center gap-3">
-                                    <img src="{{ asset('storage/' . $settings['report_logo']) }}" alt="Logo attuale"
+                                    <img src="{{ asset('uploads/' . $settings['report_logo']) }}" alt="Logo attuale"
                                          style="max-height: 48px; max-width: 200px;" class="border rounded p-1 bg-white">
                                     <div class="form-check mb-0">
                                         <input class="form-check-input" type="checkbox" name="remove_logo" value="1" id="remove_logo">
