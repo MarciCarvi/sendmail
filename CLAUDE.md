@@ -5,7 +5,7 @@ App PHP/Laravel self-hosted per l'invio di newsletter via Amazon SES. Alternativ
 
 ---
 
-## Stato attuale (v1.9.1) — evoluzioni successive al progetto originale
+## Stato attuale (v1.10.0) — evoluzioni successive al progetto originale
 
 > Le sezioni più in basso descrivono il progetto **originale**. Dove sono in conflitto con questa sezione, vale questa.
 > Il `CHANGELOG.md` è la storia per l'utente; qui c'è l'architettura e le decisioni. **Aggiornare questa sezione a ogni release che cambia l'architettura.**
@@ -31,7 +31,7 @@ App PHP/Laravel self-hosted per l'invio di newsletter via Amazon SES. Alternativ
 | `sm_undelivered` (`email` unique, `domain, consecutive, evidence json, mx_status, suggestion, flagged_at, cleared_at`) | Indirizzi non consegnati per N invii |
 | `sm_address_status` (`email` unique minuscola, `status` bounced/complained, `reason, occurred_at`) | Stato di consegna **per indirizzo**, globale; sopravvive alla cancellazione di liste e iscritti |
 | `sm_subscribers.status` | L'enum ora include `unconfirmed` (migration di allineamento) |
-| Settings (`sm_settings`) | `undelivered_threshold` (3), `undelivered_grace_hours` (48), `report_brand_name`, `report_logo` |
+| Settings (`sm_settings`) | `undelivered_threshold` (3), `undelivered_grace_hours` (48), `report_brand_name`, `report_logo`, `billing_usd_per_1000` (0,16), `billing_usd_per_eur` (1,1172), `billing_rate_date`, `billing_rate_source` (`BCE`/`manuale`) |
 
 ### Funzioni e decisioni
 - **Profili di invio**: obbligatori per inviare/programmare (le bozze no). `SesService::send(..., configurationSet)` usa quello del profilo, con fallback sul globale in Impostazioni. Il profilo ha una lista di test predefinita.
@@ -49,10 +49,13 @@ App PHP/Laravel self-hosted per l'invio di newsletter via Amazon SES. Alternativ
 - **Import**: log temporaneo (CSV in `storage/app/import-logs`, 24 h, colonna «Esito») con le righe saltate (non valida, dominio bloccato, duplicata nel file, già presente nella lista) e quelle importate con uno stato particolare (bounced, complained, unsubscribed, blacklist).
 - **Report e documenti** (`CampaignReportService`): `kpis()` alimenta sia il report del software sia il rapporto cliente (stesse cifre; percentuali sugli **inviati**). Documenti: **rapporto per il cliente** (pagina A4 stampabile/PDF: solo numeri, logo e nome dell'operatore, motivi di mancata consegna, link più cliccati; aperture solo come dato indicativo, click come metrica principale), **CSV destinatari** (`;` + BOM, per chi aggiorna i DB), **cerca destinatario** (cronologia). Logo predefinito `public/img/report-logo.png`, sostituibile in Impostazioni; credito «realizzato da SendMail» in viola `#8B5CF6`, riga testata arancione `#FFA400`.
 
+- **Fatturazione (1.10.0)** (`BillingController`, `BillingService`, vista `billing/index`, rotte `billing.*`): stima del costo di invio, **nessuna tabella nuova**. Conta le righe `sm_campaign_sends` con `status = 'sent'` raggruppate per **mese UTC** (come la fatturazione AWS) e per **cliente = `sm_campaigns.sender_profile_id`** (senza profilo → «Senza profilo»); le email di test non hanno righe e non sono contate. Costo = email × `billing_usd_per_1000` / 1000, in € dividendo per `billing_usd_per_eur` (convenzione BCE: USD per 1 €); **un solo cambio per tutti i mesi**, modificabile a mano (sorgente `manuale`, data = oggi) o con «Aggiorna dalla BCE» (`fetchEcbRate()` legge `eurofxref-daily.xml` con `Http`, regex senza SimpleXML; sorgente `BCE`). Valori iniziali in `BillingService` (0,16 $/1.000; cambio 1,1172 del 30/10/2026) usati finché le chiavi non sono in `sm_settings`. Grafico Chart.js (già nel layout) a colonne impilate, palette categorica validata (`BillingService::PALETTE`, 8 colori assegnati **per posizione del profilo tra tutti i profili**, non per classifica: il colore segue il cliente); oltre 8 clienti il grafico fonde gli altri in «Altri clienti» (grigio), la tabella per cliente li elenca tutti. Le query usano `MONTH()` di MySQL (come il resto dell'app: non testabile con lo SQLite in memoria di `phpunit.xml`).
+- **Favicon**: i link stanno nel partial `layouts/favicons.blade.php`, incluso da `layouts/app` e da `campaigns/edit` (pagina HTML a sé). Restano senza favicon `reports/summary` (A4 stampabile), `license/blocked`, `welcome` e le pagine pubbliche `public/*` (viste dai destinatari: non aggiungere senza chiedere).
+
 ### Stato aperto / da verificare
 - **Doppioni SES**: la stessa consegna arrivava due volte da due topic SNS (`sendmail-feedback` e `sendmail_carvisiglia`) entrambi iscritti a `/webhook/ses`. L'utente ha tolto la sottoscrizione a uno. Alla prossima NL: `sm_ses_events.duplicates` deve restare 0; se no, `dup_source` indica formato e topic del secondo percorso. Prima di togliere le notifiche delle identità, ogni profilo (o il globale) deve avere un Configuration Set.
 - La prima campagna (4.123 invii) ha `delivered_at` incompleto (bug pre-1.5.1): non usarla come esempio per i clienti.
-- Release GitHub da creare a mano per i tag nuovi; l'ultima versione taggata è la **1.9.1** (la Release GitHub la crea l'utente).
+- Release GitHub da creare a mano per i tag nuovi; l'ultima versione taggata è la **1.10.0** (la Release GitHub la crea l'utente).
 
 ## Stack
 - **Laravel 12** — framework principale

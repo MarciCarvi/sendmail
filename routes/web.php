@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AddressStatusController;
+use App\Http\Controllers\BillingController;
 use App\Http\Controllers\BlacklistController;
 use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\DashboardController;
@@ -97,6 +98,11 @@ Route::middleware(['auth', 'verified', 'check.license'])->group(function () {
     Route::get('/reports/{campaign}/recipients/export', [ReportController::class, 'exportRecipients'])->name('reports.recipients.export');
     Route::get('/reports/{campaign}/undelivered', [ReportController::class, 'undelivered'])->name('reports.undelivered');
     Route::get('/reports/{campaign}/undelivered/export', [ReportController::class, 'exportUndelivered'])->name('reports.undelivered.export');
+
+    // Fatturazione (costo stimato degli invii)
+    Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
+    Route::put('/billing/settings', [BillingController::class, 'settings'])->name('billing.settings');
+    Route::post('/billing/refresh-rate', [BillingController::class, 'refreshRate'])->name('billing.refresh-rate');
 
     // Campagne
     Route::get('/campaigns', [CampaignController::class, 'index'])->name('campaigns.index');

@@ -7,13 +7,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? config('app.name', 'SendMail') }}</title>
 
-    {{-- Favicon (?v=version: forza i browser a ri-scaricarla a ogni release) --}}
-    @php($faviconV = config('sendmail.version'))
-    <link rel="icon" href="{{ asset('favicon/favicon.ico') }}?v={{ $faviconV }}" sizes="any">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon/favicon-32.png') }}?v={{ $faviconV }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon/favicon-16.png') }}?v={{ $faviconV }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('favicon/apple-touch-icon.png') }}?v={{ $faviconV }}">
-    <link rel="manifest" href="{{ asset('favicon/site.webmanifest') }}">
+    @include('layouts.favicons')
     <meta name="theme-color" content="#8B5CF6">
 
     {{-- Font brand --}}
@@ -58,6 +52,12 @@
                     <a href="{{ route('reports.index') }}"
                         class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
                         Report
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('billing.index') }}"
+                        class="nav-link {{ request()->routeIs('billing.*') ? 'active' : '' }}">
+                        Fatturazione
                     </a>
                 </li>
                 <li class="nav-item">

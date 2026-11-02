@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ isset($campaign) ? 'Modifica campagna' : 'Nuova campagna' }} — {{ config('app.name') }}</title>
+    @include('layouts.favicons')
     @vite(['resources/scss/app.scss', 'resources/js/app.js'])
     @if($editorMode === 'html')
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">

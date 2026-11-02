@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.10.0] - 2026-11-02
+
+### Novità
+- **Fatturazione** (nuova voce nel menu): quanto costa inviare. In alto le cifre dell'anno (email inviate e costo stimato in € e in $); sotto un **istogramma da gennaio a dicembre** con le email inviate ogni mese, una colonna impilata con un colore per cliente (profilo di invio) e il totale del mese sopra. Passando il mouse su una colonna si vedono il dettaglio per cliente, il totale e il costo del mese.
+- **Tabella mensile**: email inviate, costo del mese in $ e in €, **costo cumulato** in € e totale dell'anno; sotto, il totale per cliente con la sua quota. Il selettore in alto a destra cambia anno.
+- **Tariffa e cambio modificabili** dalla pagina (*Modifica*): costo per 1.000 email in USD (iniziale 0,16) e cambio USD per 1 € (iniziale 1,1172, BCE del 30/10/2026). Il pulsante **Aggiorna il cambio dalla BCE** legge il cambio del giorno dal feed ufficiale della Banca Centrale Europea.
+
+### Correzioni
+- **Icona del sito mancante nella pagina di modifica delle campagne**: ora le favicon sono definite una sola volta e usate anche da quella pagina.
+
+### Note
+- È una **stima**: email inviate (stato «sent») × tariffa, convertita con **un unico cambio** per tutti i mesi (non quello del giorno di invio). I mesi sono calcolati in **UTC**, come la fatturazione di AWS. Le email di test non sono incluse, perché non vengono registrate tra gli invii. Le campagne senza profilo di invio finiscono in «Senza profilo»; oltre 8 clienti, nel grafico gli ultimi si uniscono in «Altri clienti» (la tabella li elenca tutti).
+- Nessuna modifica allo schema del database.
+
 ## [1.9.1] - 2026-10-15
 
 ### Correzioni
