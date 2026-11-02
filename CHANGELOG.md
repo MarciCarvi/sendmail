@@ -3,7 +3,7 @@
 ## [1.10.0] - 2026-11-02
 
 ### Novità
-- **Fatturazione** (nuova voce nel menu): quanto costa inviare. In alto le cifre dell'anno (email inviate e costo stimato in € e in $); sotto un **istogramma da gennaio a dicembre** con le email inviate ogni mese, una colonna impilata con un colore per cliente (profilo di invio) e il totale del mese sopra. Passando il mouse su una colonna si vedono il dettaglio per cliente, il totale e il costo del mese.
+- **Fatturazione** (nuova voce nel menu): quanto costa inviare. In alto le cifre dell'anno (email inviate e costo stimato in € e in $); sotto un **istogramma da gennaio a dicembre** con le email inviate ogni mese: in ogni mese **una colonna per cliente** (profilo di invio), affiancate e ciascuna col suo colore. Passando il mouse su un mese si vedono il dettaglio per cliente, il totale e il costo del mese.
 - **Tabella mensile**: email inviate, costo del mese in $ e in €, **costo cumulato** in € e totale dell'anno; sotto, il totale per cliente con la sua quota. Il selettore in alto a destra cambia anno.
 - **Tariffa e cambio modificabili** dalla pagina (*Modifica*): costo per 1.000 email in USD (iniziale 0,16) e cambio USD per 1 € (iniziale 1,1172, BCE del 30/10/2026). Il pulsante **Aggiorna il cambio dalla BCE** legge il cambio del giorno dal feed ufficiale della Banca Centrale Europea.
 

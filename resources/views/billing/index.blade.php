@@ -81,13 +81,13 @@
     <div class="card mb-3">
         <div class="card-body">
             <div class="fw-semibold mb-1">Email inviate per mese e per cliente</div>
-            <div class="small text-muted mb-3">Un colore per cliente (profilo di invio). Passa sopra una colonna per il dettaglio e il costo del mese.</div>
+            <div class="small text-muted mb-3">In ogni mese una colonna per cliente (profilo di invio), ciascuno col suo colore. Passa sopra un mese per il dettaglio e il costo.</div>
             @if($data['totalEmails'] === 0)
                 <div class="text-center text-muted py-5">Nessuna email inviata nel {{ $year }}.</div>
             @else
                 <div style="position: relative; height: 360px;">
                     <canvas id="billingChart" role="img"
-                            aria-label="Istogramma delle email inviate ogni mese del {{ $year }}, suddivise per cliente. I valori sono nella tabella sotto."></canvas>
+                            aria-label="Istogramma delle email inviate ogni mese del {{ $year }}, con una colonna per cliente. I valori sono nella tabella sotto."></canvas>
                 </div>
             @endif
         </div>
@@ -189,67 +189,34 @@
 
         Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
 
-        var chart;
-
-        // Segmento in cima alla pila: solo lì si arrotonda l'estremità
-        function topSeries(j) {
-            for (var k = series.length - 1; k >= 0; k--) {
-                if (series[k].data[j] > 0) return k;
-            }
-            return -1;
-        }
-
-        // Totale del mese sopra ogni colonna
-        var totals = {
-            id: 'monthTotals',
-            afterDatasetsDraw: function (c) {
-                var ctx = c.ctx;
-                ctx.save();
-                ctx.fillStyle = '#52514e';
-                ctx.font = '600 11px ' + Chart.defaults.font.family;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'bottom';
-                for (var j = 0; j < 12; j++) {
-                    var k = topSeries(j);
-                    if (k < 0) continue;
-                    var sum = 0;
-                    series.forEach(function (s) { sum += s.data[j]; });
-                    var bar = c.getDatasetMeta(k).data[j];
-                    ctx.fillText(fmt(sum), bar.x, bar.y - 6);
-                }
-                ctx.restore();
-            }
-        };
-
-        chart = new Chart(canvas, {
+        // Colonne affiancate: in ogni mese una per cliente, nell'ordine e coi colori della legenda
+        new Chart(canvas, {
             type: 'bar',
             data: {
                 labels: labels,
-                datasets: series.map(function (s, i) {
+                datasets: series.map(function (s) {
                     return {
                         label: s.name,
                         data: s.data,
                         backgroundColor: s.color,
-                        borderColor: surface,         // 1px per lato: 2px di spazio tra i segmenti
+                        borderColor: surface,         // 1px per lato: 2px di spazio tra le colonne affiancate
                         borderWidth: 1,
                         borderSkipped: false,
+                        borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 0, bottomRight: 0 },
                         maxBarThickness: 24,
-                        borderRadius: function (ctx) {
-                            return topSeries(ctx.dataIndex) === ctx.datasetIndex
-                                ? { topLeft: 4, topRight: 4, bottomLeft: 0, bottomRight: 0 } : 0;
-                        }
+                        categoryPercentage: 0.8,
+                        barPercentage: 1
                     };
                 })
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { top: 18 } },
                 interaction: { mode: 'index', intersect: false },
                 scales: {
-                    x: { stacked: true, grid: { display: false }, border: { color: '#c3c2b7' }, ticks: { color: '#898781' } },
+                    x: { grid: { display: false }, border: { color: '#c3c2b7' }, ticks: { color: '#898781' } },
                     y: {
-                        stacked: true, beginAtZero: true,
+                        beginAtZero: true,
                         grid: { color: '#e1e0d9' }, border: { display: false },
                         ticks: { color: '#898781', callback: function (v) { return nf.format(v); } }
                     }
@@ -257,11 +224,11 @@
                 plugins: {
                     legend: {
                         position: 'bottom',
-                        onClick: null,   // nascondere una serie renderebbe incoerenti totali e costo
+                        onClick: null,   // il totale e il costo del mese nel tooltip riguardano tutti i clienti
                         labels: { usePointStyle: true, pointStyle: 'rectRounded', boxWidth: 10, boxHeight: 10, padding: 16, color: '#52514e' }
                     },
                     tooltip: {
-                        itemSort: function (a, b) { return b.datasetIndex - a.datasetIndex; },
+                        itemSort: function (a, b) { return a.datasetIndex - b.datasetIndex; },
                         filter: function (item) { return item.parsed.y > 0; },
                         callbacks: {
                             title: function (items) { return full[items[0].dataIndex]; },
@@ -274,8 +241,7 @@
                         }
                     }
                 }
-            },
-            plugins: [totals]
+            }
         });
     })();
     </script>
