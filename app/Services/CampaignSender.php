@@ -120,6 +120,9 @@ class CampaignSender
 
                 // Se l'evento SES (consegna/bounce) è arrivato prima di questo salvataggio, applicalo ora
                 if ($messageId) {
+                    // Conteggio per la fatturazione: sopravvive alla cancellazione di campagne, liste e iscritti
+                    app(BillingService::class)->recordSent($campaign);
+
                     try {
                         SesEvent::applyPendingFor($messageId);
                     } catch (\Throwable $e) {

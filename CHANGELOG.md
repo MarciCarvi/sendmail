@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.11.0] - 2026-11-02
+
+### Novità
+- **Fatturazione: gli anni passati restano affidabili.** I conteggi delle email inviate per mese e per cliente sono ora registrati **al momento dell'invio** in una tabella a parte. Non cambiano più se elimini campagne, liste, iscritti o un profilo di invio (prima si calcolavano dagli invii, che si cancellano insieme a loro, e il totale degli anni passati sarebbe sceso). Un profilo eliminato resta nel conteggio come «Nome (eliminato)», con lo stesso colore.
+- **Tariffa e cambio per anno.** Ogni anno tiene i propri valori: aggiornare il cambio o la tariffa dell'anno in corso non modifica più i costi degli anni passati. Un anno senza valori propri usa quelli dell'ultimo anno che li ha (la pagina lo indica: «Valori impostati per il 2026»). «Salva» e «Aggiorna il cambio dalla BCE» valgono per l'anno che stai guardando con il selettore.
+
+### Correzioni
+- **Asse delle email nel grafico**: niente più tacche decimali (0,5; 1,5…) quando gli invii sono pochi.
+
+### Note
+- Con l'aggiornamento il registro viene riempito dagli invii **ancora presenti** (stato «sent», nel mese in cui sono stati inviati). Quelli già eliminati prima non si possono recuperare.
+- Tariffa e cambio salvati con la 1.10.0 restano validi come valori di base per gli anni che non ne hanno di propri.
+- Resta un solo valore di tariffa e di cambio per anno: se cambiano a metà anno non si può rappresentare.
+- Nuova tabella `billing_ledger` (creata dall'aggiornamento; l'installer la crea per le nuove installazioni).
+
 ## [1.10.0] - 2026-11-02
 
 ### Novità

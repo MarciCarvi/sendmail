@@ -633,6 +633,13 @@ function install_sql(string $p): array
           `created_at` timestamp NULL DEFAULT NULL, `updated_at` timestamp NULL DEFAULT NULL,
           PRIMARY KEY (`id`), UNIQUE KEY `{$p}address_status_email_unique` (`email`)
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
+        ["{$p}billing_ledger", "CREATE TABLE IF NOT EXISTS `{$p}billing_ledger` (
+          `id` bigint unsigned NOT NULL AUTO_INCREMENT, `year` smallint unsigned NOT NULL,
+          `month` tinyint unsigned NOT NULL, `sender_profile_id` bigint unsigned NOT NULL DEFAULT '0',
+          `profile_name` varchar(255) DEFAULT NULL, `emails` bigint unsigned NOT NULL DEFAULT '0',
+          `created_at` timestamp NULL DEFAULT NULL, `updated_at` timestamp NULL DEFAULT NULL,
+          PRIMARY KEY (`id`), UNIQUE KEY `{$p}billing_ledger_period_unique` (`year`, `month`, `sender_profile_id`)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
         ["{$p}unlayer_blocks", "CREATE TABLE IF NOT EXISTS `{$p}unlayer_blocks` (
           `id` bigint unsigned NOT NULL AUTO_INCREMENT, `name` varchar(255) NOT NULL,
           `body` json NOT NULL, `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -669,6 +676,7 @@ function install_migrations(): array
         '2026_10_14_090000_realign_bounced_and_complained_subscribers',
         '2026_10_14_100000_create_sm_address_status_table',
         '2026_10_15_090000_move_uploads_to_public_uploads',
+        '2026_11_02_100000_create_sm_billing_ledger_table',
     ];
 }
 

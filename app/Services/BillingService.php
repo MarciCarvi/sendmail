@@ -2,17 +2,24 @@
 
 namespace App\Services;
 
+use App\Models\Campaign;
 use App\Models\Setting;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Costo di invio stimato: email inviate per mese e per cliente (profilo di invio) × tariffa AWS.
  * I mesi sono quelli UTC, come la fatturazione AWS (l'app salva sent_at in UTC).
+ *
+ * I conteggi stanno nel registro sm_billing_ledger, scritto a ogni invio: non dipendono da sm_campaign_sends,
+ * che si cancella con campagne, liste e iscritti. Tariffa e cambio sono per anno, così quelli passati non
+ * cambiano quando si aggiorna il cambio o la tariffa.
  */
 class BillingService
 {
-    // Valori iniziali: tariffa indicata dall'utente, cambio BCE del 30/10/2026
+    // Valori iniziali (tariffa indicata dall'utente, cambio BCE del 30/10/2026): non cambiarli mai, gli anni
+    // senza valori propri li usano ancora.
     public const DEFAULT_USD_PER_1000 = 0.16;
     public const DEFAULT_USD_PER_EUR  = 1.1172;
     public const DEFAULT_RATE_DATE    = '2026-10-30';
@@ -24,75 +31,148 @@ class BillingService
     public const COLOR_OTHERS     = '#898781';
     public const COLOR_NO_PROFILE = '#c3c2b7';
 
-    public function usdPer1000(): float
+    /**
+     * Tariffa e cambio validi per un anno: quelli salvati per quell'anno o, in mancanza, per l'ultimo anno
+     * precedente che ne ha (altrimenti i valori della 1.10.0 o quelli iniziali). `usd_per_eur` = dollari per 1 €
+     * (convenzione BCE). `from_year` dice da quale anno vengono (null = base).
+     */
+    public function rates(int $year): array
     {
-        return (float) Setting::get('billing_usd_per_1000', self::DEFAULT_USD_PER_1000);
+        $stored = $this->storedRates();
+        $years  = array_filter(array_keys($stored), fn ($y) => $y <= $year);
+
+        if ($years) {
+            $from = max($years);
+
+            return $this->normalize($stored[$from]) + ['from_year' => $from];
+        }
+
+        // Chiavi singole scritte dalla 1.10.0, prima che i valori fossero per anno
+        return $this->normalize([
+            'usd_per_1000' => Setting::get('billing_usd_per_1000'),
+            'usd_per_eur'  => Setting::get('billing_usd_per_eur'),
+            'rate_date'    => Setting::get('billing_rate_date'),
+            'rate_source'  => Setting::get('billing_rate_source'),
+        ]) + ['from_year' => null];
     }
 
-    /** Dollari USA per 1 euro (convenzione BCE). */
-    public function usdPerEur(): float
+    /** Salva (unendoli a quelli già validi) i valori di un anno; da quel momento l'anno ha i propri. */
+    public function saveRates(int $year, array $changes): void
     {
-        $rate = (float) Setting::get('billing_usd_per_eur', self::DEFAULT_USD_PER_EUR);
+        $stored  = $this->storedRates();
+        $current = $this->rates($year);
+        unset($current['from_year']);
 
-        return $rate > 0 ? $rate : self::DEFAULT_USD_PER_EUR;
+        $stored[$year] = array_merge($current, $changes);
+        ksort($stored);
+
+        Setting::set('billing_rates', json_encode($stored));
     }
 
-    public function rateDate(): string
+    /** @return array<int, array> anno => valori */
+    private function storedRates(): array
     {
-        return (string) Setting::get('billing_rate_date', self::DEFAULT_RATE_DATE);
+        $raw = json_decode((string) Setting::get('billing_rates', ''), true);
+        $out = [];
+
+        foreach (is_array($raw) ? $raw : [] as $year => $values) {
+            if (is_array($values)) {
+                $out[(int) $year] = $values;
+            }
+        }
+
+        return $out;
     }
 
-    public function rateSource(): string
+    private function normalize(array $r): array
     {
-        return (string) Setting::get('billing_rate_source', 'BCE');
+        $price = (float) ($r['usd_per_1000'] ?? self::DEFAULT_USD_PER_1000);
+        $rate  = (float) ($r['usd_per_eur'] ?? self::DEFAULT_USD_PER_EUR);
+
+        return [
+            'usd_per_1000' => $price >= 0 ? $price : self::DEFAULT_USD_PER_1000,
+            'usd_per_eur'  => $rate > 0 ? $rate : self::DEFAULT_USD_PER_EUR,
+            'rate_date'    => (string) ($r['rate_date'] ?? self::DEFAULT_RATE_DATE),
+            'rate_source'  => (string) ($r['rate_source'] ?? 'BCE'),
+        ];
     }
 
-    /** Anni selezionabili: dal primo invio a quello corrente. */
+    /**
+     * Conta un invio riuscito nel registro (mese corrente, profilo della campagna). Non lancia mai
+     * eccezioni: un problema qui non deve fermare né far fallire un invio.
+     */
+    public function recordSent(Campaign $campaign, int $emails = 1): void
+    {
+        try {
+            $period = [
+                'year'              => (int) now()->year,
+                'month'             => (int) now()->month,
+                'sender_profile_id' => (int) $campaign->sender_profile_id,
+            ];
+            $name  = $campaign->senderProfile?->name;
+            $extra = ['updated_at' => now()] + ($name !== null ? ['profile_name' => $name] : []);
+
+            $row = fn () => DB::table('sm_billing_ledger')->where($period);
+
+            if ($row()->increment('emails', $emails, $extra) === 0) {
+                DB::table('sm_billing_ledger')->insertOrIgnore(
+                    $period + ['profile_name' => $name, 'emails' => 0, 'created_at' => now(), 'updated_at' => now()]
+                );
+                $row()->increment('emails', $emails, $extra);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Registro fatturazione: conteggio non salvato', ['campaign_id' => $campaign->id, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /** Anni selezionabili: dal primo con invii a quello corrente. */
     public function years(): array
     {
-        $first = DB::table('sm_campaign_sends')->where('status', 'sent')->min('sent_at');
-        $from  = $first ? (int) substr($first, 0, 4) : (int) now()->year;
+        $current = (int) now()->year;
+        $first   = DB::table('sm_billing_ledger')->min('year');
 
-        return range((int) now()->year, min($from, (int) now()->year));
+        return range($current, min($first ? (int) $first : $current, $current));
     }
 
     /**
      * @return array{
-     *   year:int, clients:array, months:array, totalEmails:int, totalUsd:float, totalEur:float
+     *   year:int, rates:array, clients:array, series:array, months:array, totalEmails:int, totalUsd:float, totalEur:float
      * }
      */
     public function year(int $year): array
     {
-        $price = $this->usdPer1000();
-        $rate  = $this->usdPerEur();
+        $rates = $this->rates($year);
+        $price = $rates['usd_per_1000'];
+        $rate  = $rates['usd_per_eur'];
 
-        $rows = DB::table('sm_campaign_sends as s')
-            ->join('sm_campaigns as c', 'c.id', '=', 's.campaign_id')
-            ->where('s.status', 'sent')
-            ->whereBetween('s.sent_at', ["{$year}-01-01 00:00:00", "{$year}-12-31 23:59:59"])
-            ->selectRaw('MONTH(s.sent_at) as month, c.sender_profile_id as profile_id, COUNT(*) as n')
-            ->groupByRaw('MONTH(s.sent_at), c.sender_profile_id')
-            ->get();
+        $rows = DB::table('sm_billing_ledger')
+            ->where('year', $year)
+            ->get(['month', 'sender_profile_id', 'profile_name', 'emails']);
 
-        // Il colore segue il cliente (posizione tra tutti i profili), non la sua classifica nell'anno
-        $profiles = DB::table('sm_sender_profiles')->orderBy('id')->pluck('name', 'id');
-        $slot = [];
-        foreach ($profiles->keys() as $i => $id) {
-            $slot[$id] = $i;
-        }
+        // Il colore segue il cliente (posizione tra tutti i profili, anche eliminati), non la sua classifica nell'anno
+        $profiles = DB::table('sm_sender_profiles')->pluck('name', 'id');
+        $known = $profiles->keys()->map(fn ($id) => (int) $id)
+            ->merge(DB::table('sm_billing_ledger')->where('sender_profile_id', '>', 0)->distinct()->pluck('sender_profile_id')->map(fn ($id) => (int) $id))
+            ->unique()->sort()->values();
+        $slot = array_flip($known->all());
 
         $clients = [];
         $perMonth = array_fill(1, 12, []);   // mese => [chiave cliente => email]
         foreach ($rows as $r) {
-            $key = $r->profile_id === null ? 'none' : (string) $r->profile_id;
+            $id  = (int) $r->sender_profile_id;
+            $key = $id === 0 ? 'none' : (string) $id;
+
             if (!isset($clients[$key])) {
-                $clients[$key] = $this->describeClient($r->profile_id, $profiles, $slot);
+                $name = $id === 0
+                    ? 'Senza profilo'
+                    : ($profiles[$id] ?? (($r->profile_name ?: "Profilo #{$id}") . ' (eliminato)'));
+                $clients[$key] = $this->describeClient($id, $name, $slot);
             }
-            $perMonth[(int) $r->month][$key] = ($perMonth[(int) $r->month][$key] ?? 0) + (int) $r->n;
-            $clients[$key]['emails'] += (int) $r->n;
+            $perMonth[(int) $r->month][$key] = ($perMonth[(int) $r->month][$key] ?? 0) + (int) $r->emails;
+            $clients[$key]['emails'] += (int) $r->emails;
         }
 
-        // Ordine di impilamento: profili nell'ordine dei colori, poi "Altri", poi "Senza profilo"
+        // Ordine delle serie: profili nell'ordine dei colori, poi "Altri", poi "Senza profilo"
         uasort($clients, fn ($a, $b) => $a['order'] <=> $b['order']);
 
         $months = [];
@@ -121,6 +201,7 @@ class BillingService
 
         return [
             'year'        => $year,
+            'rates'       => $rates,
             'clients'     => $clients,
             'series'      => $this->chartSeries($clients, $months),
             'months'      => $months,
@@ -155,14 +236,13 @@ class BillingService
         return array_values($series);
     }
 
-    private function describeClient(?int $profileId, \Illuminate\Support\Collection $profiles, array $slot): array
+    private function describeClient(int $profileId, string $name, array $slot): array
     {
-        if ($profileId === null) {
-            return ['name' => 'Senza profilo', 'color' => self::COLOR_NO_PROFILE, 'order' => 1000, 'emails' => 0];
+        if ($profileId === 0) {
+            return ['name' => $name, 'color' => self::COLOR_NO_PROFILE, 'order' => 1000, 'emails' => 0];
         }
 
-        $name = $profiles[$profileId] ?? "Profilo #{$profileId}";
-        $i    = $slot[$profileId] ?? count(self::PALETTE);
+        $i = $slot[$profileId] ?? count(self::PALETTE);
 
         return [
             'name'   => $name,

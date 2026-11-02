@@ -4,6 +4,7 @@
     $dec = fn ($v, $d = 2) => number_format($v, $d, ',', '.');
     $year = $data['year'];
     $months = $data['months'];
+    $rates = $data['rates'];
 @endphp
 <x-app-layout>
     <x-slot name="title">Fatturazione</x-slot>
@@ -41,14 +42,17 @@
         <div class="col-md-4">
             <div class="card h-100"><div class="card-body">
                 <div class="d-flex justify-content-between align-items-start">
-                    <div class="small text-muted">Tariffa e cambio</div>
+                    <div class="small text-muted">Tariffa e cambio {{ $year }}</div>
                     <a class="small" data-bs-toggle="collapse" href="#billing-settings" role="button" aria-expanded="{{ $errors->any() ? 'true' : 'false' }}" aria-controls="billing-settings">Modifica</a>
                 </div>
-                <div class="fw-semibold">$ {{ $dec($usdPer1000) }} ogni 1.000 email</div>
+                <div class="fw-semibold">$ {{ $dec($rates['usd_per_1000']) }} ogni 1.000 email</div>
                 <div class="small text-muted">
-                    1 € = $ {{ $dec($usdPerEur, 4) }}
-                    ({{ $rateSource }}, {{ \Carbon\Carbon::parse($rateDate)->format('d/m/Y') }})
+                    1 € = $ {{ $dec($rates['usd_per_eur'], 4) }}
+                    ({{ $rates['rate_source'] }}, {{ \Carbon\Carbon::parse($rates['rate_date'])->format('d/m/Y') }})
                 </div>
+                @if($rates['from_year'] !== null && $rates['from_year'] !== $year)
+                    <div class="small text-muted">Valori impostati per il {{ $rates['from_year'] }}</div>
+                @endif
             </div></div>
         </div>
     </div>
@@ -60,20 +64,25 @@
                 <input type="hidden" name="anno" value="{{ $year }}">
                 <div>
                     <label class="form-label small fw-semibold mb-1">Costo per 1.000 email (USD)</label>
-                    <input type="number" name="usd_per_1000" step="0.0001" min="0" value="{{ old('usd_per_1000', $usdPer1000) }}"
+                    <input type="number" name="usd_per_1000" step="0.0001" min="0" value="{{ old('usd_per_1000', $rates['usd_per_1000']) }}"
                            class="form-control form-control-sm" style="width: 150px">
                 </div>
                 <div>
                     <label class="form-label small fw-semibold mb-1">Cambio (USD per 1 €)</label>
-                    <input type="number" name="usd_per_eur" step="0.0001" min="0.0001" value="{{ old('usd_per_eur', $usdPerEur) }}"
+                    <input type="number" name="usd_per_eur" step="0.0001" min="0.0001" value="{{ old('usd_per_eur', $rates['usd_per_eur']) }}"
                            class="form-control form-control-sm" style="width: 150px">
                 </div>
-                <button class="btn btn-outline-secondary btn-sm">Salva</button>
+                <button class="btn btn-outline-secondary btn-sm">Salva per il {{ $year }}</button>
             </form>
             <form method="POST" action="{{ route('billing.refresh-rate') }}" class="ms-auto">
                 @csrf
+                <input type="hidden" name="anno" value="{{ $year }}">
                 <button class="btn btn-primary btn-sm">Aggiorna il cambio dalla BCE</button>
             </form>
+            <div class="w-100 small text-muted">
+                I valori valgono per il {{ $year }}: ogni anno tiene i propri, quindi cambiare il cambio o la tariffa di quest'anno non modifica i costi degli anni passati.
+                Un anno senza valori propri usa quelli dell'ultimo anno che li ha.
+            </div>
         </div></div>
     </div>
 
@@ -168,8 +177,9 @@
     @endif
 
     <p class="text-muted small">
-        Stima: email inviate (stato «sent») × tariffa, convertita con un unico cambio per tutti i mesi.
-        I mesi sono calcolati in UTC, come la fatturazione di AWS. Le email di test non sono incluse (non vengono registrate tra gli invii).
+        Stima: email inviate × tariffa, convertita con un unico cambio per tutto l'anno.
+        I mesi sono calcolati in UTC, come la fatturazione di AWS. Le email di test non sono incluse.
+        I conteggi sono registrati al momento dell'invio e restano anche se poi elimini campagne, liste o iscritti.
     </p>
 
     @if($data['totalEmails'] > 0)
@@ -218,7 +228,7 @@
                     y: {
                         beginAtZero: true,
                         grid: { color: '#e1e0d9' }, border: { display: false },
-                        ticks: { color: '#898781', callback: function (v) { return nf.format(v); } }
+                        ticks: { color: '#898781', precision: 0, callback: function (v) { return nf.format(v); } }
                     }
                 },
                 plugins: {
