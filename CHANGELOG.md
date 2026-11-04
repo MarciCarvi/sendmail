@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.12.0] - 2026-11-04
+
+### Novità
+- **Pagina «Suppression list», divisa per cliente.** Mostra gli indirizzi che Amazon SES si rifiuta di raggiungere perché hanno già generato un bounce permanente o un reclamo spam: motivo, data, cliente (il dominio del mittente delle liste in cui l'indirizzo compare, come in «Disiscritti») e stato in SendMail. Si filtra per cliente, motivo ed email, e si esporta in CSV (con gli stessi filtri) per chi aggiorna il database del cliente. Gli indirizzi che non compaiono in nessuna tua lista stanno nella voce «Non nelle mie liste».
+- **Esclusi prima dell'invio.** La lista di SES è unica per account e regione, quindi contiene anche indirizzi segnalati da altri clienti: SendMail non li conosceva e li inviava comunque a SES per vederseli rifiutare (e comparire come non consegnati nel rapporto del cliente). Ora vengono letti da SES e segnati come esclusi (bounce o reclamo, valido per tutte le liste) prima di costruire l'elenco dei destinatari.
+- **Sincronizzazione.** La prima si fa a mano dalla pagina («Prima sincronizzazione», a pagine, senza timeout); da lì in poi si aggiorna da sola prima di ogni invio e ogni giorno (solo le voci nuove). Un indirizzo che riabiliti a mano non viene segnato di nuovo finché SES non aggiorna la sua voce. Se un indirizzo viene tolto dalla lista in SES, scompare dalla pagina alla sincronizzazione manuale successiva.
+
+### Note
+- **Serve un permesso in più** sull'utente IAM usato da SendMail: l'azione `ses:ListSuppressedDestinations`. Senza, la pagina mostra il messaggio e gli invii non vengono bloccati. Si legge la lista della regione SES impostata in Impostazioni.
+- Togliere un indirizzo dalla suppression list si fa dalla console AWS (SES → Suppression list), dopo averne capito il motivo: «Riabilita ovunque» in SendMail non lo sblocca in SES.
+- Nuova tabella `ses_suppressions` (creata dall'aggiornamento; l'installer la crea per le nuove installazioni). È solo una copia della lista di SES.
+
 ## [1.11.0] - 2026-11-02
 
 ### Novità

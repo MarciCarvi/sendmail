@@ -640,6 +640,13 @@ function install_sql(string $p): array
           `created_at` timestamp NULL DEFAULT NULL, `updated_at` timestamp NULL DEFAULT NULL,
           PRIMARY KEY (`id`), UNIQUE KEY `{$p}billing_ledger_period_unique` (`year`, `month`, `sender_profile_id`)
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
+        ["{$p}ses_suppressions", "CREATE TABLE IF NOT EXISTS `{$p}ses_suppressions` (
+          `id` bigint unsigned NOT NULL AUTO_INCREMENT, `email` varchar(255) NOT NULL,
+          `reason` varchar(20) NOT NULL, `listed_at` timestamp NULL DEFAULT NULL, `synced_at` timestamp NULL DEFAULT NULL,
+          `created_at` timestamp NULL DEFAULT NULL, `updated_at` timestamp NULL DEFAULT NULL,
+          PRIMARY KEY (`id`), UNIQUE KEY `{$p}ses_suppressions_email_unique` (`email`),
+          KEY `{$p}ses_suppressions_reason_index` (`reason`)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
         ["{$p}unlayer_blocks", "CREATE TABLE IF NOT EXISTS `{$p}unlayer_blocks` (
           `id` bigint unsigned NOT NULL AUTO_INCREMENT, `name` varchar(255) NOT NULL,
           `body` json NOT NULL, `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -677,6 +684,7 @@ function install_migrations(): array
         '2026_10_14_100000_create_sm_address_status_table',
         '2026_10_15_090000_move_uploads_to_public_uploads',
         '2026_11_02_100000_create_sm_billing_ledger_table',
+        '2026_11_04_100000_create_sm_ses_suppressions_table',
     ];
 }
 

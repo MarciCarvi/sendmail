@@ -73,6 +73,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('suppression.index') }}"
+                        class="nav-link {{ request()->routeIs('suppression.*') ? 'active' : '' }}">
+                        Suppression list
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('blacklist.index') }}"
                         class="nav-link {{ request()->routeIs('blacklist.*') ? 'active' : '' }}">
                         Blacklist

@@ -33,6 +33,11 @@ class CampaignSender
         }
         $undelivered = Undelivered::activeEmails();
 
+        // Suppression list di SES: segna come esclusi gli indirizzi nuovi prima di costruire l'elenco, così non
+        // vengono inviati a SES solo per essere rifiutati. Non lancia eccezioni e parte solo dopo la prima
+        // sincronizzazione manuale (pagina «Suppression list»).
+        app(SuppressionService::class)->syncIncremental();
+
         // Disiscritti per il cliente (dominio del mittente della campagna)
         $unsubscribed = Unsubscribe::suppressedFor($campaign->from_email);
 

@@ -10,6 +10,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SenderProfileController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SubscriberController;
+use App\Http\Controllers\SuppressionController;
 use App\Http\Controllers\ImageUploadController;
 use App\Http\Controllers\UnlayerController;
 use App\Http\Controllers\UndeliveredController;
@@ -81,6 +82,11 @@ Route::middleware(['auth', 'verified', 'check.license'])->group(function () {
     Route::post('/undelivered/check-mx', [UndeliveredController::class, 'checkMx'])->name('undelivered.check-mx');
     Route::post('/undelivered/{undelivered}/reinstate', [UndeliveredController::class, 'reinstate'])->name('undelivered.reinstate');
     Route::post('/undelivered/{undelivered}/blacklist', [UndeliveredController::class, 'blacklist'])->name('undelivered.blacklist');
+
+    // Suppression list di SES, per cliente
+    Route::get('/suppression', [SuppressionController::class, 'index'])->name('suppression.index');
+    Route::post('/suppression/sync', [SuppressionController::class, 'sync'])->name('suppression.sync');
+    Route::get('/suppression/export', [SuppressionController::class, 'export'])->name('suppression.export');
 
     // Stato per indirizzo (bounced/complained): riabilitazione ovunque
     Route::post('/address-status/reinstate', [AddressStatusController::class, 'reinstate'])->name('address-status.reinstate');
