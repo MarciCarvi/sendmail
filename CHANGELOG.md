@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.12.1] - 2026-11-04
+
+### Correzioni
+- **Paginazione sballata** (frecce giganti e pulsanti senza stile) nella pagina «Suppression list» e nelle pagine «Non consegnati», «Disiscritti» e nell'elenco dei non consegnati di un report. Ora tutte le pagine usano lo stesso paginatore Bootstrap di Iscritti e Blacklist.
+
 ## [1.12.0] - 2026-11-04
 
 ### Novità
