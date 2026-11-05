@@ -165,31 +165,8 @@ class UndeliveredService
      */
     public function checkDomain(string $domain): string
     {
-        if ($domain === '' || !function_exists('dns_get_record')) {
-            return 'unknown';
-        }
-
-        try {
-            $mx = @dns_get_record($domain, DNS_MX);
-            if ($mx === false) {
-                return 'unknown';
-            }
-
-            if (!empty($mx)) {
-                $targets = array_filter(array_map(fn($r) => rtrim($r['target'] ?? '', '.'), $mx));
-
-                return empty($targets) ? 'null_mx' : 'ok';
-            }
-
-            $addr = @dns_get_record($domain, DNS_A + DNS_AAAA);
-            if ($addr === false) {
-                return 'unknown';
-            }
-
-            return empty($addr) ? 'dead' : 'no_mx';
-        } catch (\Throwable) {
-            return 'unknown';
-        }
+        // La logica DNS sta in DomainCheckService (usata anche dalla pagina «Controllo domini» delle liste)
+        return app(DomainCheckService::class)->inspect($domain)['status'];
     }
 
     /**

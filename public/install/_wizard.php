@@ -647,6 +647,12 @@ function install_sql(string $p): array
           PRIMARY KEY (`id`), UNIQUE KEY `{$p}ses_suppressions_email_unique` (`email`),
           KEY `{$p}ses_suppressions_reason_index` (`reason`)
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
+        ["{$p}domain_checks", "CREATE TABLE IF NOT EXISTS `{$p}domain_checks` (
+          `id` bigint unsigned NOT NULL AUTO_INCREMENT, `domain` varchar(255) NOT NULL,
+          `status` varchar(20) NOT NULL, `detail` varchar(500) DEFAULT NULL, `checked_at` timestamp NULL DEFAULT NULL,
+          `created_at` timestamp NULL DEFAULT NULL, `updated_at` timestamp NULL DEFAULT NULL,
+          PRIMARY KEY (`id`), UNIQUE KEY `{$p}domain_checks_domain_unique` (`domain`)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
         ["{$p}unlayer_blocks", "CREATE TABLE IF NOT EXISTS `{$p}unlayer_blocks` (
           `id` bigint unsigned NOT NULL AUTO_INCREMENT, `name` varchar(255) NOT NULL,
           `body` json NOT NULL, `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -685,6 +691,7 @@ function install_migrations(): array
         '2026_10_15_090000_move_uploads_to_public_uploads',
         '2026_11_02_100000_create_sm_billing_ledger_table',
         '2026_11_04_100000_create_sm_ses_suppressions_table',
+        '2026_11_05_100000_create_sm_domain_checks_table',
     ];
 }
 

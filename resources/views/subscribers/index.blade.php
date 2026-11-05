@@ -2,6 +2,9 @@
     <x-slot name="title">{{ $list->name }} — Iscritti</x-slot>
     <x-slot name="actions">
         <div class="d-flex gap-2">
+            <a href="{{ route('lists.domains.index', $list) }}" class="btn btn-outline-secondary btn-sm">
+                Controllo domini
+            </a>
             <a href="{{ route('lists.subscribers.export', $list) }}" class="btn btn-outline-secondary btn-sm">
                 Esporta CSV
             </a>

@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.13.0] - 2026-11-05
+
+### Novità
+- **Controllo domini per lista.** In ogni lista (pulsante «Domini» in Liste, «Controllo domini» in Iscritti) puoi controllare quando vuoi se i domini degli indirizzi esistono e ricevono posta. Il risultato è l'elenco dei domini **problematici**, ognuno con il numero di utenti in lista (e di quelli iscritti), da verificare uno per uno: non risolve (inesistente, scaduto o DNS non funzionante), non riceve posta, nessun MX (la posta andrebbe all'indirizzo del sito), controllo non riuscito. Per ogni dominio: suggerimento sui refusi (es. gmial.com → gmail.com), «Vedi utenti» (iscritti della lista filtrati per quel dominio), «Ricontrolla» e un link a MXToolbox per una verifica esterna. Si filtra per tipo di problema e si esporta in CSV.
+- **Controllo a gruppi, ripetibile.** Il controllo gira dal browser a piccoli gruppi (barra di avanzamento, «Riprendi» se si interrompe). «Controlla di nuovo tutti i domini» ripete tutto; «Ricontrolla solo i problematici» è più rapido per verificare dopo una correzione.
+- **Nessuna esclusione automatica.** Il controllo non elimina né esclude nessuno: un dominio può risultare «non risolve» anche per un guasto momentaneo del suo provider. Prima di dichiarare un dominio morto SendMail riprova una seconda volta, e se il DNS del server non risponde (verificato con un dominio sicuramente vivo) il controllo non parte, invece di segnare tutto come morto.
+
+### Note
+- Nuova tabella `domain_checks` (creata dall'aggiornamento; l'installer la crea per le nuove installazioni): un dominio, un esito, valido per tutte le liste.
+- Usa il DNS del server (`dns_get_record`): se l'hosting lo vieta, la pagina lo segnala.
+- Anche il controllo DNS di «Non consegnati» usa ora la stessa logica (con il secondo tentativo).
+
 ## [1.12.1] - 2026-11-04
 
 ### Correzioni

@@ -6,6 +6,7 @@ use App\Http\Controllers\BlacklistController;
 use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ListController;
+use App\Http\Controllers\ListDomainController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SenderProfileController;
 use App\Http\Controllers\SettingsController;
@@ -51,8 +52,14 @@ Route::middleware(['auth', 'verified', 'check.license'])->group(function () {
     Route::put('/lists/{list}', [ListController::class, 'update'])->name('lists.update');
     Route::delete('/lists/{list}', [ListController::class, 'destroy'])->name('lists.destroy');
 
+    // Controllo DNS dei domini degli iscritti di una lista
+    Route::get('/lists/{list}/domains', [ListDomainController::class, 'index'])->name('lists.domains.index');
+    Route::post('/lists/{list}/domains/check', [ListDomainController::class, 'check'])->name('lists.domains.check');
+    Route::post('/lists/{list}/domains/recheck', [ListDomainController::class, 'recheck'])->name('lists.domains.recheck');
+    Route::get('/lists/{list}/domains/export', [ListDomainController::class, 'export'])->name('lists.domains.export');
+
     // Iscritti
-    Route::get('/lists/{list}/subscribers', [SubscriberController::class, 'index'])->name('lists.subscribers.index');
+    Route::get('/lists/{list}/subscribers',[SubscriberController::class, 'index'])->name('lists.subscribers.index');
     Route::post('/lists/{list}/subscribers', [SubscriberController::class, 'store'])->name('lists.subscribers.store');
     Route::put('/lists/{list}/subscribers/{subscriber}', [SubscriberController::class, 'update'])->name('lists.subscribers.update');
     Route::delete('/lists/{list}/subscribers/{subscriber}', [SubscriberController::class, 'destroy'])->name('lists.subscribers.destroy');

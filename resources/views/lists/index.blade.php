@@ -50,6 +50,8 @@
                                     @endif
                                 </td>
                                 <td class="text-end">
+                                    <a href="{{ route('lists.domains.index', $list) }}" class="btn btn-sm btn-outline-secondary"
+                                       title="Controlla i domini degli iscritti (DNS/MX)">Domini</a>
                                     @unless($list->is_test)
                                     <button class="btn btn-sm btn-outline-primary"
                                             data-bs-toggle="modal"
