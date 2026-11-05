@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\DomainCheck;
 use App\Models\MailList;
+use App\Models\Subscriber;
 use App\Services\DomainCheckService;
 use App\Services\UndeliveredService;
 use Illuminate\Http\Request;
@@ -37,17 +38,9 @@ class ListDomainController extends Controller
         ];
         $byStatus = $problems->groupBy(fn($r) => $r['check']->status)->map->count();
 
-        // Filtri: tipo di problema e ricerca per dominio
-        $filtered = $problems;
-        if (in_array($request->status, DomainCheckService::PROBLEMS, true)) {
-            $filtered = $filtered->filter(fn($r) => $r['check']->status === $request->status);
-        }
-        if ($request->filled('search')) {
-            $needle = strtolower(trim((string) $request->search));
-            $filtered = $filtered->filter(fn($r) => str_contains($r['domain'], $needle));
-        }
-
-        $filtered = $this->sorted($filtered);
+        // Filtri: tipo di problema e ricerca per dominio (gli stessi valgono per le esportazioni)
+        $filtered = $this->sorted($this->applyFilters($problems, $request));
+        $filteredUsers = $filtered->sum('users');   // utenti in lista nei domini mostrati (filtri compresi)
 
         $page    = max(1, (int) $request->query('page', 1));
         $entries = new LengthAwarePaginator(
@@ -62,7 +55,7 @@ class ListDomainController extends Controller
             ->mapWithKeys(fn($r) => [$r['domain'] => $undelivered->suggestDomain($r['domain'])])
             ->filter()->all();
 
-        return view('lists.domains', compact('list', 'entries', 'summary', 'byStatus', 'suggestions'));
+        return view('lists.domains', compact('list', 'entries', 'summary', 'byStatus', 'suggestions', 'filteredUsers'));
     }
 
     /** Un gruppo di domini; il browser lo ripete finché ne restano. */
@@ -123,30 +116,122 @@ class ListDomainController extends Controller
         return back()->with('success', "«{$domain}» ricontrollato: {$label}. {$result->detail}");
     }
 
-    /** CSV dei domini problematici (`;` + BOM, orari di Roma). */
-    public function export(MailList $list, DomainCheckService $svc)
+    /**
+     * Esporta in CSV (`;` + BOM, orari di Roma). Tipo (`type`):
+     *  - `domains` (predefinito): i domini problematici, con gli stessi filtri della pagina;
+     *  - `addresses`: gli indirizzi della lista che stanno in quei domini (stessi filtri), per chi pulisce il database;
+     *  - `all`: tutti i domini della lista con il loro esito, anche senza problemi (ignora i filtri).
+     */
+    public function export(Request $request, MailList $list, DomainCheckService $svc)
     {
-        $tz   = config('sendmail.report_timezone', 'Europe/Rome');
-        $rows = $this->sorted($this->rows($list, $svc)->filter(
-            fn($r) => $r['check'] && in_array($r['check']->status, DomainCheckService::PROBLEMS, true)
-        ));
+        $type  = in_array($request->query('type'), ['addresses', 'all'], true) ? $request->query('type') : 'domains';
+        $tz    = config('sendmail.report_timezone', 'Europe/Rome');
+        $rows  = $this->rows($list, $svc);
+        $stamp = now()->format('Y-m-d');
 
-        return response()->streamDownload(function () use ($rows, $tz) {
+        if ($type === 'all') {
+            $selected = $rows->sort(function ($a, $b) {
+                $sa = $a['check'] ? DomainCheckService::severity($a['check']->status) : 98;
+                $sb = $b['check'] ? DomainCheckService::severity($b['check']->status) : 98;
+
+                return [$sa, -$a['users'], $a['domain']] <=> [$sb, -$b['users'], $b['domain']];
+            })->values();
+
+            return $this->streamCsv("domini-lista-{$list->id}-{$stamp}.csv",
+                ['Dominio', 'Esito', 'Dettaglio', 'Utenti in lista', 'Di cui iscritti', 'Ultimo controllo'],
+                function ($out) use ($selected, $tz) {
+                    foreach ($selected as $r) {
+                        $this->putRow($out, [
+                            $this->csvSafe($r['domain']),
+                            $r['check'] ? DomainCheckService::label($r['check']->status)[1] : 'Mai controllato',
+                            $this->csvSafe($r['check']?->detail),
+                            $r['users'],
+                            $r['active'],
+                            $r['check']?->checked_at?->copy()->setTimezone($tz)->format('d/m/Y H:i'),
+                        ]);
+                    }
+                });
+        }
+
+        $problems = $rows->filter(fn($r) => $r['check'] && in_array($r['check']->status, DomainCheckService::PROBLEMS, true));
+        $selected = $this->sorted($this->applyFilters($problems, $request));
+
+        if ($type === 'addresses') {
+            $byDomain = $selected->keyBy('domain');
+
+            return $this->streamCsv("indirizzi-domini-problematici-lista-{$list->id}-{$stamp}.csv",
+                ['Email', 'Nome', 'Cognome', 'Azienda', 'Stato iscritto', 'Dominio', 'Problema del dominio', 'Dettaglio'],
+                function ($out) use ($list, $byDomain) {
+                    foreach ($byDomain->keys()->chunk(300) as $domains) {
+                        Subscriber::where('list_id', $list->id)
+                            ->whereRaw("LOWER(TRIM(SUBSTRING_INDEX(email, '@', -1))) IN (" . implode(',', array_fill(0, $domains->count(), '?')) . ')', $domains->values()->all())
+                            ->orderBy('id')
+                            ->chunkById(500, function ($subscribers) use ($out, $byDomain) {
+                                foreach ($subscribers as $sub) {
+                                    $domain = strtolower(trim(substr(strrchr($sub->email, '@') ?: '', 1)));
+                                    $check  = $byDomain->get($domain)['check'] ?? null;
+                                    $this->putRow($out, [
+                                        $this->csvSafe($sub->email),
+                                        $this->csvSafe($sub->first_name),
+                                        $this->csvSafe($sub->last_name),
+                                        $this->csvSafe($sub->company),
+                                        $sub->status,
+                                        $this->csvSafe($domain),
+                                        $check ? DomainCheckService::label($check->status)[1] : '',
+                                        $this->csvSafe($check?->detail),
+                                    ]);
+                                }
+                            });
+                    }
+                });
+        }
+
+        return $this->streamCsv("domini-problematici-lista-{$list->id}-{$stamp}.csv",
+            ['Dominio', 'Problema', 'Dettaglio', 'Utenti in lista', 'Di cui iscritti', 'Ultimo controllo'],
+            function ($out) use ($selected, $tz) {
+                foreach ($selected as $r) {
+                    $this->putRow($out, [
+                        $this->csvSafe($r['domain']),
+                        DomainCheckService::label($r['check']->status)[1],
+                        $this->csvSafe($r['check']->detail),
+                        $r['users'],
+                        $r['active'],
+                        $r['check']->checked_at?->copy()->setTimezone($tz)->format('d/m/Y H:i'),
+                    ]);
+                }
+            });
+    }
+
+    /** Filtri della pagina: tipo di problema (`status`) e ricerca per dominio (`search`). */
+    private function applyFilters($problems, Request $request)
+    {
+        if (in_array($request->query('status'), DomainCheckService::PROBLEMS, true)) {
+            $status   = $request->query('status');
+            $problems = $problems->filter(fn($r) => $r['check']->status === $status);
+        }
+
+        if ($request->filled('search')) {
+            $needle   = strtolower(trim((string) $request->query('search')));
+            $problems = $problems->filter(fn($r) => str_contains($r['domain'], $needle));
+        }
+
+        return $problems;
+    }
+
+    private function streamCsv(string $filename, array $header, callable $body)
+    {
+        return response()->streamDownload(function () use ($header, $body) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM UTF-8: Excel mostra correttamente gli accenti
-            fputcsv($out, ['Dominio', 'Problema', 'Dettaglio', 'Utenti in lista', 'Di cui iscritti', 'Ultimo controllo'], ';', '"', '\\');
-            foreach ($rows as $r) {
-                fputcsv($out, [
-                    $this->csvSafe($r['domain']),
-                    DomainCheckService::label($r['check']->status)[1],
-                    $this->csvSafe($r['check']->detail),
-                    $r['users'],
-                    $r['active'],
-                    $r['check']->checked_at?->copy()->setTimezone($tz)->format('d/m/Y H:i'),
-                ], ';', '"', '\\');
-            }
+            $this->putRow($out, $header);
+            $body($out);
             fclose($out);
-        }, 'domini-problematici-lista-' . $list->id . '-' . now()->format('Y-m-d') . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    private function putRow($out, array $row): void
+    {
+        fputcsv($out, $row, ';', '"', '\\');
     }
 
     /** Domini della lista con utenti ed esito dell'ultimo controllo (null se mai controllato). */

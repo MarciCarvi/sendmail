@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.14.1] - 2026-11-05
+
+### Novità
+- **Controllo domini: esportazione completa.** Accanto ai filtri c'è il menu «Esporta CSV» con tre scelte: **Domini problematici** (con i filtri attivi), **Indirizzi in questi domini** (gli utenti della lista che stanno nei domini mostrati, con nome, azienda, stato e problema del dominio: serve a chi pulisce il database) e **Tutti i domini della lista**, anche quelli senza problemi o mai controllati. Il file contiene tutti i risultati, non solo la pagina che stai guardando.
+
+### Correzioni
+- L'esportazione dei domini problematici **ignorava i filtri** (tipo di problema e ricerca per dominio): ora li rispetta, e l'etichetta del menu lo segnala («filtrato»).
+
 ## [1.14.0] - 2026-11-05
 
 ### Novità

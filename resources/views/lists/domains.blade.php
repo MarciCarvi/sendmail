@@ -3,9 +3,6 @@
     <x-slot name="actions">
         <div class="d-flex gap-2">
             <a href="{{ route('lists.subscribers.index', $list) }}" class="btn btn-outline-secondary btn-sm">← Iscritti</a>
-            @if($summary['problems'] > 0)
-                <a href="{{ route('lists.domains.export', $list) }}" class="btn btn-outline-secondary btn-sm">Esporta CSV</a>
-            @endif
         </div>
     </x-slot>
 
@@ -127,6 +124,37 @@
             @if($filtering)
                 <a href="{{ route('lists.domains.index', $list) }}" class="btn btn-link btn-sm">Reset</a>
             @endif
+        </div>
+        @php
+            $exportQuery = array_filter(request()->only('search', 'status'), fn($v) => $v !== null && $v !== '');
+            $exp = fn($type) => route('lists.domains.export', ['list' => $list, 'type' => $type] + $exportQuery);
+        @endphp
+        <div class="col-auto ms-auto">
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Esporta CSV{{ $filtering ? ' (filtrato)' : '' }}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <a class="dropdown-item" href="{{ $exp('domains') }}">
+                            Domini problematici{{ $filtering ? ' (filtrati)' : '' }}
+                            <span class="text-muted small">· {{ number_format($entries->total()) }}</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{{ $exp('addresses') }}">
+                            Indirizzi in questi domini{{ $filtering ? ' (filtrati)' : '' }}
+                            <span class="text-muted small">· {{ number_format($filteredUsers) }}</span>
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item" href="{{ route('lists.domains.export', ['list' => $list, 'type' => 'all']) }}">
+                            Tutti i domini della lista <span class="text-muted small">(anche senza problemi, senza filtri)</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
     </form>
     @endif
