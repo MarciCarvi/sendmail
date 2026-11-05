@@ -32,6 +32,7 @@ Route::middleware(['auth', 'verified', 'check.license'])->group(function () {
     Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
     Route::post('/settings/test-ses', [SettingsController::class, 'testSes'])->name('settings.test-ses');
     Route::post('/settings/report-brand', [SettingsController::class, 'updateReportBrand'])->name('settings.report-brand');
+    Route::post('/settings/anonymize-tracking', [SettingsController::class, 'anonymizeTracking'])->name('settings.anonymize-tracking');
 
     // Profili di invio ("vesti")
     Route::get('/sender-profiles', [SenderProfileController::class, 'index'])->name('sender-profiles.index');

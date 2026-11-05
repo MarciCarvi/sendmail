@@ -127,16 +127,16 @@
         </div>
     </div>
 
-    {{-- Open rate medio + campagne recenti --}}
+    {{-- Aperture medie + campagne recenti --}}
     <div class="row g-3">
 
-        {{-- Open rate medio --}}
+        {{-- Aperture medie (ogni 100 inviati, anonime) --}}
         @if($avgOpenRate !== null)
         <div class="col-xl-3 col-md-4">
             <div class="card h-100">
                 <div class="card-body text-center py-4">
-                    <div class="fs-1 fw-bold" style="color:#8B5CF6">{{ $avgOpenRate }}%</div>
-                    <div class="text-muted small mt-1">Open rate medio<br><span class="text-muted" style="font-size:.75rem">ultime {{ $recentCampaigns->count() }} campagne</span></div>
+                    <div class="fs-1 fw-bold" style="color:#8B5CF6">{{ $avgOpenRate }}</div>
+                    <div class="text-muted small mt-1">Aperture ogni 100 inviati<br><span class="text-muted" style="font-size:.75rem">media delle ultime {{ $recentCampaigns->count() }} campagne · indicativo</span></div>
                 </div>
             </div>
         </div>

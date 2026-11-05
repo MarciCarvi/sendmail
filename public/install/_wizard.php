@@ -572,7 +572,7 @@ function install_sql(string $p): array
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
         ["{$p}campaign_opens", "CREATE TABLE IF NOT EXISTS `{$p}campaign_opens` (
           `id` bigint unsigned NOT NULL AUTO_INCREMENT, `campaign_id` bigint unsigned NOT NULL,
-          `subscriber_id` bigint unsigned NOT NULL, `opened_at` timestamp NOT NULL,
+          `subscriber_id` bigint unsigned DEFAULT NULL, `opened_at` timestamp NOT NULL,
           `ip` varchar(45) DEFAULT NULL, `user_agent` text, PRIMARY KEY (`id`),
           KEY `{$p}campaign_opens_campaign_id_index` (`campaign_id`),
           CONSTRAINT `{$p}campaign_opens_campaign_id_foreign` FOREIGN KEY (`campaign_id`) REFERENCES `{$p}campaigns` (`id`) ON DELETE CASCADE,
@@ -580,7 +580,7 @@ function install_sql(string $p): array
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"],
         ["{$p}campaign_clicks", "CREATE TABLE IF NOT EXISTS `{$p}campaign_clicks` (
           `id` bigint unsigned NOT NULL AUTO_INCREMENT, `campaign_id` bigint unsigned NOT NULL,
-          `subscriber_id` bigint unsigned NOT NULL, `original_url` text NOT NULL,
+          `subscriber_id` bigint unsigned DEFAULT NULL, `original_url` text NOT NULL,
           `clicked_at` timestamp NOT NULL, `ip` varchar(45) DEFAULT NULL, PRIMARY KEY (`id`),
           KEY `{$p}campaign_clicks_campaign_id_index` (`campaign_id`),
           CONSTRAINT `{$p}campaign_clicks_campaign_id_foreign` FOREIGN KEY (`campaign_id`) REFERENCES `{$p}campaigns` (`id`) ON DELETE CASCADE,
@@ -692,6 +692,7 @@ function install_migrations(): array
         '2026_11_02_100000_create_sm_billing_ledger_table',
         '2026_11_04_100000_create_sm_ses_suppressions_table',
         '2026_11_05_100000_create_sm_domain_checks_table',
+        '2026_11_06_100000_make_campaign_tracking_anonymous',
     ];
 }
 

@@ -86,6 +86,10 @@ class CampaignSender
             ->limit($batchSize)
             ->get();
 
+        // Tracciamento anonimo: pixel e link tracciati sono identici per tutti i destinatari, quindi si inseriscono
+        // una volta sola nel modello, prima della sostituzione delle variabili per iscritto.
+        $trackedHtml = $tracking->injectTracking($campaign->html_content ?? '', $campaign->id);
+
         $sentCount   = 0;
         $failedCount = 0;
 
@@ -99,9 +103,8 @@ class CampaignSender
                     continue;
                 }
 
-                $html = CampaignController::replaceVariables($campaign->html_content ?? '', $subscriber);
-                $html = $tracking->injectTracking($html, $campaign->id, $subscriber->token);
-                $text = CampaignController::replaceVariables($campaign->text_content ?? '', $subscriber);
+                $html = CampaignController::replaceVariables($trackedHtml, $subscriber);
+                $text =CampaignController::replaceVariables($campaign->text_content ?? '', $subscriber);
 
                 $messageId = $ses->send(
                     to:              $subscriber->email,

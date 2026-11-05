@@ -22,11 +22,12 @@ class ReportController extends Controller
             ->get()
             ->map(function ($c) {
                 $sent          = CampaignSend::where('campaign_id', $c->id)->where('status', 'sent')->count();
-                $uniqueOpens   = CampaignOpen::where('campaign_id', $c->id)->distinct('subscriber_id')->count('subscriber_id');
-                $uniqueClicks  = CampaignClick::where('campaign_id', $c->id)->distinct('subscriber_id')->count('subscriber_id');
+                // Tracciamento anonimo: si contano le aperture e i click totali, non le persone
+                $opens  = CampaignOpen::where('campaign_id', $c->id)->count();
+                $clicks = CampaignClick::where('campaign_id', $c->id)->count();
                 $c->stat_sent        = $sent;
-                $c->stat_open_rate   = $sent > 0 ? round($uniqueOpens  / $sent * 100, 1) : 0;
-                $c->stat_click_rate  = $sent > 0 ? round($uniqueClicks / $sent * 100, 1) : 0;
+                $c->stat_open_rate   = $sent > 0 ? round($opens  / $sent * 100, 1) : 0;
+                $c->stat_click_rate  = $sent > 0 ? round($clicks / $sent * 100, 1) : 0;
                 return $c;
             });
 
@@ -84,27 +85,21 @@ class ReportController extends Controller
             $dowData[]   = $opensByDow->get($d)?->count ?? 0;
         }
 
-        // Ultimi 50 che hanno aperto
-        $openers = CampaignOpen::with('subscriber')
-            ->where('campaign_id', $campaign->id)
-            ->latest('opened_at')
-            ->limit(50)
-            ->get();
-
-        // Ultimi 50 click
-        $clicks = CampaignClick::with('subscriber')
-            ->where('campaign_id', $campaign->id)
-            ->latest('clicked_at')
-            ->limit(50)
+        // Link più cliccati (aggregato per indirizzo: i click non sono legati a nessuna persona)
+        $topLinks = CampaignClick::where('campaign_id', $campaign->id)
+            ->selectRaw('original_url, COUNT(*) as total')
+            ->groupBy('original_url')
+            ->orderByDesc('total')
+            ->limit(15)
             ->get();
 
         return view('reports.show', compact(
             'campaign', 'progress',
             'sent', 'delivered', 'deliveryRate', 'failed', 'bounced', 'bouncedPermanent', 'complaints', 'undeliveredCount',
-            'uniqueOpens', 'totalOpens', 'uniqueClicks', 'totalClicks',
+            'totalOpens', 'totalClicks',
             'unsubscribed', 'openRate', 'clickRate', 'unsubRate',
             'hourLabels', 'hourData', 'dowLabels', 'dowData',
-            'openers', 'clicks'
+            'topLinks'
         ));
     }
 

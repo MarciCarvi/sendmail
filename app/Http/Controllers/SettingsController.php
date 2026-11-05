@@ -6,6 +6,7 @@ use App\Models\Setting;
 use App\Services\LicenseService;
 use App\Services\SesService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class SettingsController extends Controller
@@ -28,8 +29,9 @@ class SettingsController extends Controller
         ];
 
         $licenseStatus = $license->check();
+        $trackingPersonal = $this->trackingPersonalCounts();
 
-        return view('settings.index', compact('settings', 'licenseStatus'));
+        return view('settings.index', compact('settings', 'licenseStatus', 'trackingPersonal'));
     }
 
     public function update(Request $request)
@@ -72,6 +74,49 @@ class SettingsController extends Controller
         }
 
         return back()->with('success', 'Impostazioni salvate.');
+    }
+
+    /** Aperture e click già raccolti con dati riconducibili a persone (prima della 1.14.0). */
+    private function trackingPersonalCounts(): array
+    {
+        $personal = fn($q) => $q->whereNotNull('subscriber_id')->orWhereNotNull('ip');
+
+        $opens  = DB::table('sm_campaign_opens')->where(fn($q) => $personal($q)->orWhereNotNull('user_agent'))->count();
+        $clicks = DB::table('sm_campaign_clicks')->where($personal)->count();
+
+        return ['opens' => $opens, 'clicks' => $clicks, 'total' => $opens + $clicks];
+    }
+
+    /**
+     * Azzera lo storico del tracciamento: toglie iscritto, IP e user agent da aperture e click già registrati e porta
+     * l'orario all'ora intera. Resta solo il conteggio (campagna, ora, link). Irreversibile; solo su richiesta manuale
+     * (non parte da solo né con l'aggiornamento).
+     */
+    public function anonymizeTracking(Request $request)
+    {
+        $request->validate(
+            ['confirm' => 'required|in:ANONIMIZZA'],
+            ['confirm.required' => 'Per confermare scrivi ANONIMIZZA.', 'confirm.in' => 'Per confermare scrivi ANONIMIZZA (tutto maiuscolo).']
+        );
+
+        $opens = DB::table('sm_campaign_opens')
+            ->where(fn($q) => $q->whereNotNull('subscriber_id')->orWhereNotNull('ip')->orWhereNotNull('user_agent'))
+            ->update([
+                'subscriber_id' => null,
+                'ip'            => null,
+                'user_agent'    => null,
+                'opened_at'     => DB::raw("DATE_FORMAT(opened_at, '%Y-%m-%d %H:00:00')"),
+            ]);
+
+        $clicks = DB::table('sm_campaign_clicks')
+            ->where(fn($q) => $q->whereNotNull('subscriber_id')->orWhereNotNull('ip'))
+            ->update([
+                'subscriber_id' => null,
+                'ip'            => null,
+                'clicked_at'    => DB::raw("DATE_FORMAT(clicked_at, '%Y-%m-%d %H:00:00')"),
+            ]);
+
+        return back()->with('success', "Storico azzerato: {$opens} aperture e {$clicks} click non sono più riconducibili a nessuna persona.");
     }
 
     /** Nome e logo mostrati nei rapporti per il cliente. */

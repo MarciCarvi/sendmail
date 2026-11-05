@@ -104,8 +104,8 @@
         <div class="kpis">
             <div class="kpi"><div class="v">{{ $n($s['sent']) }}</div><div class="l">Inviati</div></div>
             <div class="kpi"><div class="v">{{ $p($s['deliveryRate']) }}</div><div class="l">Consegnati</div><div class="s">{{ $n($s['delivered']) }} / {{ $n($s['sent']) }}</div></div>
-            <div class="kpi"><div class="v">{{ $p($s['openRate']) }}</div><div class="l">Open rate</div><div class="s">{{ $n($s['uniqueOpens']) }} unici / {{ $n($s['totalOpens']) }} tot</div></div>
-            <div class="kpi hl"><div class="v">{{ $p($s['clickRate']) }}</div><div class="l">Click rate</div><div class="s">{{ $n($s['uniqueClicks']) }} unici / {{ $n($s['totalClicks']) }} tot</div></div>
+            <div class="kpi"><div class="v">{{ $n($s['totalOpens']) }}</div><div class="l">Aperture</div><div class="s">{{ $s['openRate'] }} ogni 100 inviati · indicativo</div></div>
+            <div class="kpi hl"><div class="v">{{ $n($s['totalClicks']) }}</div><div class="l">Click</div><div class="s">{{ $s['clickRate'] }} ogni 100 inviati</div></div>
             <div class="kpi"><div class="v">{{ $p($s['unsubRate']) }}</div><div class="l">Unsub rate</div><div class="s">{{ $n($s['unsubscribed']) }} disiscritti</div></div>
             <div class="kpi">
                 <div class="v">{{ $n($s['bounced'] + $s['failed'] + $s['complaints']) }}</div><div class="l">Problemi</div>
@@ -169,21 +169,19 @@
         <section>
             <h2>Click</h2>
             <div class="mini">
-                <div><b>{{ $n($s['uniqueClicks']) }}</b><span>destinatari che hanno cliccato</span></div>
-                <div><b>{{ $p($s['clickRate']) }}</b><span>sulle email inviate</span></div>
                 <div><b>{{ $n($s['totalClicks']) }}</b><span>click totali</span></div>
+                <div><b>{{ $s['clickRate'] }}</b><span>click ogni 100 email inviate</span></div>
             </div>
             @if($s['topLinks']->isNotEmpty())
-                @php $maxClicks = max(1, $s['topLinks']->max('uniq')); @endphp
+                @php $maxClicks = max(1, $s['topLinks']->max('total')); @endphp
                 <table>
-                    <thead><tr><th>Link più cliccati</th><th class="n">Destinatari</th><th class="n">Click</th><th style="width:22%"></th></tr></thead>
+                    <thead><tr><th>Link più cliccati</th><th class="n">Click</th><th style="width:22%"></th></tr></thead>
                     <tbody>
                         @foreach($s['topLinks'] as $l)
                             <tr>
                                 <td><a class="lnk" href="{{ $l->original_url }}" title="{{ $l->original_url }}">{{ \Illuminate\Support\Str::limit($l->original_url, 70) }}</a></td>
-                                <td class="n">{{ $n($l->uniq) }}</td>
                                 <td class="n">{{ $n($l->total) }}</td>
-                                <td><div class="bar"><i style="width: {{ $l->uniq / $maxClicks * 100 }}%"></i></div></td>
+                                <td><div class="bar"><i style="width: {{ $l->total / $maxClicks * 100 }}%"></i></div></td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -196,8 +194,8 @@
         <section>
             <h2>Aperture <span style="font-weight:400;color:var(--muted)">(dato indicativo)</span></h2>
             <div class="mini">
-                <div><b>{{ $n($s['uniqueOpens']) }}</b><span>aperture stimate</span></div>
-                <div><b>{{ $p($s['openRate']) }}</b><span>sulle email inviate</span></div>
+                <div><b>{{ $n($s['totalOpens']) }}</b><span>aperture registrate</span></div>
+                <div><b>{{ $s['openRate'] }}</b><span>aperture ogni 100 email inviate</span></div>
             </div>
             <div class="note">
                 Il conteggio delle aperture è approssimato: alcuni programmi di posta le registrano anche senza lettura reale
@@ -216,7 +214,7 @@
 
         <footer>
             Dati aggiornati al {{ $s['generatedAt']->format('d/m/Y H:i') }} (ora di Roma). Click e aperture possono continuare ad aumentare nei giorni successivi all'invio.
-            Click unici: destinatari distinti che hanno cliccato almeno un link.
+            Le statistiche di aperture e click sono anonime e aggregate per campagna: non è possibile sapere chi ha aperto o cliccato.
             <div class="credit">
                 Rapporto realizzato da
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="#8B5CF6" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="29" cy="31" r="8.5"/><path d="M37.5 31V34a6 6 0 0 0 12 0V31a20 20 0 1 0-7 15.2"/><path d="M48 12 58 10 56 20"/></svg>

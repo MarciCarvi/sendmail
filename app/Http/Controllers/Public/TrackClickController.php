@@ -3,14 +3,21 @@
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
+use App\Models\Campaign;
 use App\Models\CampaignClick;
 use App\Models\CampaignSend;
 use App\Models\Subscriber;
+use App\Services\TrackingService;
 use Illuminate\Http\Request;
 
+/**
+ * Click su link ANONIMO: registra che il link della campagna è stato cliccato, in un'ora. Non salva chi (nessun
+ * iscritto) né l'indirizzo IP. Il redirect è consentito solo agli indirizzi firmati nell'email (nessun redirect
+ * aperto); le email vecchie (fino alla 1.13.x) continuano a funzionare.
+ */
 class TrackClickController extends Controller
 {
-    public function __invoke(Request $request, int $campaignId, string $token)
+    public function __invoke(Request $request, TrackingService $tracking, int $campaignId, string $token)
     {
         $url = base64_decode($request->query('url', ''), true);
 
@@ -21,21 +28,38 @@ class TrackClickController extends Controller
             abort(404);
         }
 
-        $subscriber = Subscriber::where('token', $token)->first();
+        $legacy = $tracking->isLegacyToken($token);
+        $valid  = $tracking->isValidClick($campaignId, $token, $url);
 
-        // Only record the click if this subscriber was actually a recipient of
-        // this campaign — prevents stats pollution via arbitrary campaign IDs.
-        if ($subscriber && CampaignSend::where('campaign_id', $campaignId)
-                ->where('subscriber_id', $subscriber->id)->exists()) {
+        // Nuovi indirizzi: se la firma non torna non si fa da redirect. I vecchi (token dell'iscritto) restano
+        // funzionanti come prima, perché sono già nelle email inviate.
+        if (!$valid && !$legacy) {
+            abort(404);
+        }
+
+        if (!$valid && $legacy) {
+            $valid = $this->isLegacyRecipient($campaignId, $token);
+        }
+
+        if ($valid && Campaign::whereKey($campaignId)->exists()) {
             CampaignClick::create([
                 'campaign_id'   => $campaignId,
-                'subscriber_id' => $subscriber->id,
+                'subscriber_id' => null,
                 'original_url'  => $url,
-                'clicked_at'    => now(),
-                'ip'            => $request->ip(),
+                'clicked_at'    => now()->startOfHour(),
+                'ip'            => null,
             ]);
         }
 
         return redirect()->away($url);
+    }
+
+    /** Solo per verificare che sia un destinatario vero della campagna: l'identità NON viene salvata. */
+    private function isLegacyRecipient(int $campaignId, string $token): bool
+    {
+        $subscriber = Subscriber::where('token', $token)->first();
+
+        return $subscriber && CampaignSend::where('campaign_id', $campaignId)
+            ->where('subscriber_id', $subscriber->id)->exists();
     }
 }

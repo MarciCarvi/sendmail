@@ -256,6 +256,42 @@
                 </div>
             </form>
 
+            {{-- Privacy: statistiche anonime e azzeramento dello storico (solo manuale) --}}
+            <div class="card mt-4">
+                <div class="card-header fw-semibold">Privacy: statistiche anonime</div>
+                <div class="card-body">
+                    <p class="small text-muted mb-2">
+                        Dalla versione 1.14.0 il pixel di apertura e i link sono <strong>identici per tutti i destinatari</strong>
+                        di una campagna e SendMail <strong>non registra chi</strong> ha aperto o cliccato: conta le aperture e i click
+                        (con l'orario all'ora), senza iscritto, indirizzo IP né user agent. Così le statistiche restano anonime
+                        (provvedimento del Garante n. 284 del 17/4/2026 sui pixel di tracciamento).
+                    </p>
+                    @if($trackingPersonal['total'] > 0)
+                        <div class="alert alert-warning small">
+                            Le campagne inviate <strong>prima</strong> dell'aggiornamento hanno ancora dati riconducibili alle persone:
+                            <strong>{{ number_format($trackingPersonal['opens']) }}</strong> aperture e
+                            <strong>{{ number_format($trackingPersonal['clicks']) }}</strong> click con iscritto, IP o user agent.
+                            Non vengono più mostrati nei report né nei CSV, ma restano nel database finché non li azzeri.
+                        </div>
+                        <form method="POST" action="{{ route('settings.anonymize-tracking') }}"
+                              onsubmit="return confirm('Azzerare per sempre iscritto, IP e user agent di aperture e click già registrati? L\'operazione non si può annullare.')">
+                            @csrf
+                            <label class="form-label small fw-semibold mb-1">
+                                <strong>Operazione irreversibile.</strong> Resta solo il conteggio (data all'ora e link). Per confermare scrivi <code>ANONIMIZZA</code>
+                            </label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <input type="text" name="confirm" autocomplete="off" placeholder="ANONIMIZZA"
+                                       class="form-control form-control-sm @error('confirm') is-invalid @enderror" style="max-width: 220px">
+                                <button type="submit" class="btn btn-danger btn-sm">Azzera lo storico</button>
+                            </div>
+                            @error('confirm')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                        </form>
+                    @else
+                        <div class="small text-success">Nessun dato di apertura o click riconducibile a persone nel database.</div>
+                    @endif
+                </div>
+            </div>
+
         </div>
     </div>
 </x-app-layout>

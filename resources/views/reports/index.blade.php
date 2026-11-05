@@ -46,8 +46,8 @@
                             <th>Campagna</th>
                             <th>Inviata</th>
                             <th class="text-end">Inviati</th>
-                            <th class="text-end">Open rate</th>
-                            <th class="text-end">Click rate</th>
+                            <th class="text-end" title="Aperture totali ogni 100 email inviate (dato indicativo, anonimo)">Aperture / 100</th>
+                            <th class="text-end" title="Click totali ogni 100 email inviate (anonimo)">Click / 100</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -58,14 +58,10 @@
                             <td class="text-muted small">{{ $campaign->sent_at?->format('d/m/Y H:i') }}</td>
                             <td class="text-end">{{ number_format($campaign->stat_sent) }}</td>
                             <td class="text-end">
-                                <span class="fw-semibold {{ $campaign->stat_open_rate >= 20 ? 'text-success' : ($campaign->stat_open_rate >= 10 ? 'text-warning' : 'text-muted') }}">
-                                    {{ $campaign->stat_open_rate }}%
-                                </span>
+                                <span class="fw-semibold text-muted">{{ $campaign->stat_open_rate }}</span>
                             </td>
                             <td class="text-end">
-                                <span class="fw-semibold {{ $campaign->stat_click_rate >= 3 ? 'text-success' : 'text-muted' }}">
-                                    {{ $campaign->stat_click_rate }}%
-                                </span>
+                                <span class="fw-semibold">{{ $campaign->stat_click_rate }}</span>
                             </td>
                             <td class="text-end">
                                 <a href="{{ route('reports.show', $campaign) }}" class="btn btn-sm btn-outline-primary">

@@ -115,9 +115,8 @@ class CampaignReportService
         $undeliveredCount = $sends()->where('status', 'sent')
             ->where(fn($q) => $q->whereNull('delivered_at')->orWhereNotNull('bounced_at'))->count();
 
-        $uniqueOpens = CampaignOpen::where('campaign_id', $id)->distinct()->count('subscriber_id');
+        // Tracciamento anonimo: aperture e click non sono legati a una persona, quindi solo totali
         $totalOpens = CampaignOpen::where('campaign_id', $id)->count();
-        $uniqueClicks = CampaignClick::where('campaign_id', $id)->distinct()->count('subscriber_id');
         $totalClicks = CampaignClick::where('campaign_id', $id)->count();
 
         // disiscritti di questa campagna: iscritti raggiunti che si sono disiscritti dal primo invio in poi
@@ -135,8 +134,8 @@ class CampaignReportService
             'sent' => $sent, 'delivered' => $delivered, 'deliveryRate' => $rate($delivered),
             'failed' => $failed, 'bounced' => $bounced, 'bouncedPermanent' => $bouncedPermanent,
             'complaints' => $complaints, 'undeliveredCount' => $undeliveredCount,
-            'uniqueOpens' => $uniqueOpens, 'totalOpens' => $totalOpens, 'openRate' => $rate($uniqueOpens),
-            'uniqueClicks' => $uniqueClicks, 'totalClicks' => $totalClicks, 'clickRate' => $rate($uniqueClicks),
+            'totalOpens' => $totalOpens, 'openRate' => $rate($totalOpens),     // aperture ogni 100 inviati (indicativo)
+            'totalClicks' => $totalClicks, 'clickRate' => $rate($totalClicks), // click ogni 100 inviati
             'unsubscribed' => $unsubscribed, 'unsubRate' => $rate($unsubscribed),
         ];
     }
@@ -175,9 +174,9 @@ class CampaignReportService
             ->map(fn($r) => $r + ['pct' => $pct($r['n'], $sent)])->all();
 
         $topLinks = CampaignClick::where('campaign_id', $id)
-            ->selectRaw('original_url, COUNT(*) as total, COUNT(DISTINCT subscriber_id) as uniq')
+            ->selectRaw('original_url, COUNT(*) as total')
             ->groupBy('original_url')
-            ->orderByDesc('uniq')->orderByDesc('total')
+            ->orderByDesc('total')
             ->limit(10)
             ->get();
 
@@ -219,7 +218,7 @@ class CampaignReportService
         return [
             'email', 'nome', 'cognome', 'azienda', 'stato_invio', 'inviato_il', 'consegnato_il',
             'esito', 'dettaglio_esito', 'bounce_tipo', 'bounce_sottotipo', 'messaggio_server',
-            'aperture', 'prima_apertura', 'click', 'primo_click', 'primo_link', 'disiscritto', 'reclamo',
+            'disiscritto', 'reclamo',
         ];
     }
 
@@ -249,13 +248,8 @@ class CampaignReportService
 
     private function rowsForChunk(Campaign $campaign, Collection $sends, int $grace, callable $fmt): \Generator
     {
-        $subscriberIds = $sends->pluck('subscriber_id')->all();
         $events = $this->eventsFor($sends->pluck('message_id')->filter()->all());
-
-        $opens = CampaignOpen::where('campaign_id', $campaign->id)->whereIn('subscriber_id', $subscriberIds)
-            ->selectRaw('subscriber_id, COUNT(*) as n, MIN(opened_at) as first_at')->groupBy('subscriber_id')->get()->keyBy('subscriber_id');
-        $clicks = CampaignClick::where('campaign_id', $campaign->id)->whereIn('subscriber_id', $subscriberIds)
-            ->orderBy('clicked_at')->get()->groupBy('subscriber_id');
+        // Nessuna colonna di aperture o click per destinatario: il tracciamento è anonimo
 
         foreach ($sends as $s) {
             $sub = $s->subscriber;
@@ -276,8 +270,6 @@ class CampaignReportService
 
             $bounceEvent = $events->get($s->message_id)?->firstWhere('event_type', 'Bounce')
                 ?? $events->get($s->message_id)?->firstWhere('event_type', 'DeliveryDelay');
-            $myClicks = $clicks->get($s->subscriber_id, collect());
-            $myOpens = $opens->get($s->subscriber_id);
 
             yield [
                 $this->safe($sub?->email), $this->safe($sub?->first_name), $this->safe($sub?->last_name), $this->safe($sub?->company),
@@ -285,9 +277,6 @@ class CampaignReportService
                 $fmt($s->sent_at), $fmt($s->delivered_at),
                 $esito, $delivered ? '' : $label,
                 $s->bounce_type ?? '', $s->bounce_subtype ?? '', $this->safe($bounceEvent?->diagnostic),
-                $myOpens?->n ?? 0, $myOpens ? $fmt(Carbon::parse($myOpens->first_at)) : '',
-                $myClicks->count(), $myClicks->isNotEmpty() ? $fmt($myClicks->first()->clicked_at) : '',
-                $this->safe($myClicks->first()?->original_url),
                 $sub?->status === 'unsubscribed' ? 'sì' : 'no',
                 $s->complained_at ? 'sì' : 'no',
             ];
@@ -314,10 +303,9 @@ class CampaignReportService
 
         $events = SesEvent::whereIn('message_id', $sends->pluck('message_id')->filter()->all())
             ->orderBy('id')->get()->groupBy('message_id');
-        $opens = CampaignOpen::whereIn('subscriber_id', $ids)->orderBy('opened_at')->get()->groupBy('campaign_id');
-        $clicks = CampaignClick::whereIn('subscriber_id', $ids)->orderBy('clicked_at')->get()->groupBy('campaign_id');
 
-        $items = $sends->map(function ($s) use ($events, $opens, $clicks) {
+        // Aperture e click non compaiono nella cronologia: il tracciamento è anonimo
+        $items = $sends->map(function ($s) use ($events) {
             $steps = [];
             $add = function (?Carbon $at, string $label, string $kind) use (&$steps) {
                 if ($at) {
@@ -346,13 +334,6 @@ class CampaignReportService
             }
             if ($s->complained_at && !$msgEvents->contains('event_type', 'Complaint')) {
                 $add($s->complained_at, 'Segnalata come spam', 'bad');
-            }
-
-            foreach ($opens->get($s->campaign_id, collect()) as $o) {
-                $add($o->opened_at, 'Aperta', 'info');
-            }
-            foreach ($clicks->get($s->campaign_id, collect()) as $c) {
-                $add($c->clicked_at, 'Click: ' . $c->original_url, 'info');
             }
 
             usort($steps, fn($a, $b) => $a['at'] <=> $b['at']);

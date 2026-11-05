@@ -26,26 +26,13 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        $openRateAvg = null;
-        if ($campaigns > 0) {
-            $openRateAvg = DB::table('sm_campaign_opens')
-                ->join('sm_campaign_sends', function ($j) {
-                    $j->on('sm_campaign_opens.campaign_id', '=', 'sm_campaign_sends.campaign_id')
-                      ->on('sm_campaign_opens.subscriber_id', '=', 'sm_campaign_sends.subscriber_id');
-                })
-                ->where('sm_campaign_sends.status', 'sent')
-                ->select('sm_campaign_opens.campaign_id')
-                ->distinct()
-                ->count();
-        }
-
         $avgOpenRate = null;
         if ($recentCampaigns->isNotEmpty()) {
             $rates = $recentCampaigns->map(function ($c) {
                 $sent   = CampaignSend::where('campaign_id', $c->id)->where('status', 'sent')->count();
-                $opened = DB::table('sm_campaign_opens')->where('campaign_id', $c->id)
-                            ->distinct('subscriber_id')->count('subscriber_id');
-                return $sent > 0 ? round($opened / $sent * 100, 1) : null;
+                // Tracciamento anonimo: aperture totali ogni 100 inviati (non si sa chi ha aperto)
+                $opens = DB::table('sm_campaign_opens')->where('campaign_id', $c->id)->count();
+                return $sent > 0 ? round($opens / $sent * 100, 1) : null;
             })->filter()->values();
 
             $avgOpenRate = $rates->isNotEmpty()

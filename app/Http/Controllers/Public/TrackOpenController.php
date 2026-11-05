@@ -3,28 +3,31 @@
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
+use App\Models\Campaign;
 use App\Models\CampaignOpen;
 use App\Models\CampaignSend;
 use App\Models\Subscriber;
 use App\Services\TrackingService;
 use Illuminate\Http\Request;
 
+/**
+ * Pixel di apertura ANONIMO: registra solo che la campagna è stata aperta, in un'ora. Non salva chi (nessun iscritto),
+ * né indirizzo IP, né user agent. L'orario è troncato all'ora.
+ */
 class TrackOpenController extends Controller
 {
-    public function __invoke(Request $request, int $campaignId, string $token)
+    public function __invoke(Request $request, TrackingService $tracking, int $campaignId, string $token)
     {
-        $subscriber = Subscriber::where('token', $token)->first();
+        $valid = $tracking->isValidOpen($campaignId, $token) || $this->isLegacyRecipient($tracking, $campaignId, $token);
 
-        // Only record the open for a genuine recipient of this campaign —
-        // prevents stats pollution via arbitrary campaign IDs.
-        if ($subscriber && CampaignSend::where('campaign_id', $campaignId)
-                ->where('subscriber_id', $subscriber->id)->exists()) {
+        // Un conteggio per apertura, solo per campagne esistenti (evita statistiche inquinate da id arbitrari)
+        if ($valid && Campaign::whereKey($campaignId)->exists()) {
             CampaignOpen::create([
                 'campaign_id'   => $campaignId,
-                'subscriber_id' => $subscriber->id,
-                'opened_at'     => now(),
-                'ip'            => $request->ip(),
-                'user_agent'    => $request->userAgent(),
+                'subscriber_id' => null,
+                'opened_at'     => now()->startOfHour(),
+                'ip'            => null,
+                'user_agent'    => null,
             ]);
         }
 
@@ -32,5 +35,21 @@ class TrackOpenController extends Controller
             ->header('Content-Type', 'image/gif')
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate')
             ->header('Pragma', 'no-cache');
+    }
+
+    /**
+     * Email inviate fino alla 1.13.x: il pixel contiene il token dell'iscritto. Si usa solo per verificare che sia
+     * un destinatario vero della campagna; l'identità NON viene salvata.
+     */
+    private function isLegacyRecipient(TrackingService $tracking, int $campaignId, string $token): bool
+    {
+        if (!$tracking->isLegacyToken($token)) {
+            return false;
+        }
+
+        $subscriber = Subscriber::where('token', $token)->first();
+
+        return $subscriber && CampaignSend::where('campaign_id', $campaignId)
+            ->where('subscriber_id', $subscriber->id)->exists();
     }
 }

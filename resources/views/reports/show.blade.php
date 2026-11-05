@@ -83,18 +83,18 @@
         <div class="col-6 col-md-2">
             <div class="card text-center h-100">
                 <div class="card-body">
-                    <div class="fs-2 fw-bold text-success">{{ $openRate }}%</div>
-                    <div class="small text-muted">Open rate</div>
-                    <div class="small text-muted">{{ $uniqueOpens }} unici / {{ $totalOpens }} tot</div>
+                    <div class="fs-2 fw-bold text-success">{{ number_format($totalOpens) }}</div>
+                    <div class="small text-muted">Aperture</div>
+                    <div class="small text-muted">{{ $openRate }} ogni 100 inviati · indicativo</div>
                 </div>
             </div>
         </div>
         <div class="col-6 col-md-2">
             <div class="card text-center h-100">
                 <div class="card-body">
-                    <div class="fs-2 fw-bold text-info">{{ $clickRate }}%</div>
-                    <div class="small text-muted">Click rate</div>
-                    <div class="small text-muted">{{ $uniqueClicks }} unici / {{ $totalClicks }} tot</div>
+                    <div class="fs-2 fw-bold text-info">{{ number_format($totalClicks) }}</div>
+                    <div class="small text-muted">Click</div>
+                    <div class="small text-muted">{{ $clickRate }} ogni 100 inviati</div>
                 </div>
             </div>
         </div>
@@ -147,34 +147,33 @@
 
     <div class="row g-3">
 
-        {{-- Tabella aperture --}}
-        <div class="col-md-6">
+        {{-- Link più cliccati (aggregato: nessun dato sulle persone) --}}
+        <div class="col-md-7">
             <div class="card h-100">
                 <div class="card-header fw-semibold d-flex justify-content-between">
-                    <span>Chi ha aperto</span>
-                    <span class="badge bg-success">{{ $uniqueOpens }}</span>
+                    <span>Link più cliccati</span>
+                    <span class="badge bg-info">{{ number_format($totalClicks) }} click</span>
                 </div>
-                @if($openers->isEmpty())
-                    <div class="card-body text-muted small">Nessuna apertura registrata.</div>
+                @if($topLinks->isEmpty())
+                    <div class="card-body text-muted small">Nessun click registrato.</div>
                 @else
                     <div class="table-responsive">
                         <table class="table table-sm table-hover mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Email</th>
-                                    <th>Quando</th>
+                                    <th>Link</th>
+                                    <th class="text-end">Click</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($openers as $open)
+                                @foreach($topLinks as $link)
                                     <tr>
-                                        <td class="small">
-                                            {{ $open->subscriber?->email ?? '—' }}
-                                            @if($open->subscriber?->full_name)
-                                                <br><span class="text-muted">{{ $open->subscriber->full_name }}</span>
-                                            @endif
+                                        <td class="small text-truncate" style="max-width:380px;">
+                                            <a href="{{ $link->original_url }}" target="_blank" rel="noopener noreferrer" title="{{ $link->original_url }}">
+                                                {{ $link->original_url }}
+                                            </a>
                                         </td>
-                                        <td class="small text-muted text-nowrap">{{ $open->opened_at->format('d/m H:i') }}</td>
+                                        <td class="small text-end">{{ number_format($link->total) }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -184,41 +183,16 @@
             </div>
         </div>
 
-        {{-- Tabella click --}}
-        <div class="col-md-6">
+        {{-- Nota sul tracciamento anonimo --}}
+        <div class="col-md-5">
             <div class="card h-100">
-                <div class="card-header fw-semibold d-flex justify-content-between">
-                    <span>Chi ha cliccato</span>
-                    <span class="badge bg-info">{{ $uniqueClicks }}</span>
+                <div class="card-header fw-semibold">Statistiche anonime</div>
+                <div class="card-body small text-muted">
+                    Pixel di apertura e link sono <strong>identici per tutti i destinatari</strong> della campagna: SendMail
+                    conta quante aperture e quanti click ci sono stati (con l'orario all'ora), ma <strong>non registra chi</strong>
+                    ha aperto o cliccato, né indirizzo IP o dispositivo. Per questo non ci sono aperture o click «unici».
+                    Le aperture sono un dato indicativo: includono riaperture e caricamenti automatici di alcuni programmi di posta.
                 </div>
-                @if($clicks->isEmpty())
-                    <div class="card-body text-muted small">Nessun click registrato.</div>
-                @else
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Email</th>
-                                    <th>Link</th>
-                                    <th>Quando</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($clicks as $click)
-                                    <tr>
-                                        <td class="small">{{ $click->subscriber?->email ?? '—' }}</td>
-                                        <td class="small text-truncate" style="max-width:150px;">
-                                            <a href="{{ $click->original_url }}" target="_blank" title="{{ $click->original_url }}">
-                                                {{ parse_url($click->original_url, PHP_URL_HOST) ?? $click->original_url }}
-                                            </a>
-                                        </td>
-                                        <td class="small text-muted text-nowrap">{{ $click->clicked_at->format('d/m H:i') }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @endif
             </div>
         </div>
 

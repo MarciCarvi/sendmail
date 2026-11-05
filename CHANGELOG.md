@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.14.0] - 2026-11-05
+
+### Novità
+- **Statistiche anonime** (provvedimento del Garante n. 284 del 17/4/2026 sui pixel di tracciamento). Il pixel di apertura e i link tracciati sono ora **identici per tutti i destinatari** di una campagna: contengono solo l'id della campagna e una firma, non l'email né il token dell'iscritto. SendMail conta aperture e click ma **non registra chi** ha aperto o cliccato, né indirizzo IP né user agent; l'orario è troncato all'ora.
+- **Click anonimi.** Il click è contato per link, non per persona. Il tracker reindirizza solo agli indirizzi firmati nell'email (prima accettava qualsiasi indirizzo).
+- **Report adeguati.** Non ci sono più aperture e click «unici», né l'elenco di chi ha aperto o cliccato, né le colonne di aperture e click per destinatario nel CSV, né aperture e click nella cronologia di un indirizzo. Restano aperture e click **totali** (anche ogni 100 inviati), le aperture per ora e giorno della settimana e i **link più cliccati**. Le aperture sono un dato indicativo. Il rapporto per il cliente riporta una nota sul tracciamento anonimo; la dashboard mostra le aperture ogni 100 inviati.
+- **Impostazioni → Privacy → «Azzera lo storico».** Le campagne inviate prima dell'aggiornamento hanno ancora aperture e click legati a iscritto, IP e user agent: non vengono più mostrati, ma restano nel database. Il pulsante li azzera (resta solo il conteggio, con l'orario all'ora). È **solo manuale**: non parte con l'aggiornamento e chiede di scrivere ANONIMIZZA, perché non si può annullare.
+
+### Correzioni
+- I link con più parametri (`&amp;` nell'HTML) ora reindirizzano all'indirizzo corretto. Link `tel:`, ancore e link relativi non passano più dal tracker.
+
+### Note
+- Le email già inviate continuano a funzionare: pixel e link vecchi vengono contati in modo anonimo (il token dell'iscritto serve solo a verificare che sia un destinatario vero e **non viene salvato**).
+- I link con variabili personali (per esempio `{{email}}` nell'indirizzo) sono per definizione individuali e **non vengono tracciati**. Il link di disiscrizione resta personale: non è tracciamento.
+- I **log del server web** registrano comunque IP e user agent di ogni richiesta al pixel: non dipende da SendMail, conviene verificare con il fornitore dell'hosting per quanto tempo vengono conservati. L'informativa privacy della newsletter dovrebbe citare la misurazione statistica anonima.
+- Migration: `subscriber_id` di aperture e click ora può essere vuoto. I dati già raccolti non vengono toccati.
+
 ## [1.13.0] - 2026-11-05
 
 ### Novità
